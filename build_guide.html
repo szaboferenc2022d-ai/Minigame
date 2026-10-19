@@ -1,0 +1,906 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amőba lépésről lépésre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+  /* Layout: kockás füzetlap – bal oldalon ragadós fejezetlista, jobbra egy olvasóoszlop; fájlonként egy „lap” kártya */
+  :root {
+    --paper: #f6f7f3;
+    --sheet: #ffffff;
+    --grid: #dfe6ee;
+    --text: #1d2430;
+    --muted: #5b6676;
+    --line: #d5dce5;
+    --ink: #2547a8;        /* X – golyóstoll */
+    --pencil: #b8432f;     /* O – piros ceruza */
+    --mark: #fff1a8;       /* szövegkiemelő az új sorokhoz */
+    --mark-edge: #e3c43a;
+    --code-bg: #f1f3f6;
+    --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14181e; --sheet: #1b2028; --grid: #20262f; --text: #e4e8ee; --muted: #9aa5b4;
+      --line: #2e3643; --ink: #8ea8ff; --pencil: #f08a74; --mark: #4a4216; --mark-edge: #b89a2a;
+      --code-bg: #12161c; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14181e; --sheet: #1b2028; --grid: #20262f; --text: #e4e8ee; --muted: #9aa5b4;
+    --line: #2e3643; --ink: #8ea8ff; --pencil: #f08a74; --mark: #4a4216; --mark-edge: #b89a2a;
+    --code-bg: #12161c; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: var(--text);
+    font: 16px/1.65 var(--font-body);
+  }
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 2.5rem 4rem;
+    display: grid;
+    gap: 2.5rem;
+  }
+  @media (min-width: 980px) {
+    .page { grid-template-columns: 15rem minmax(0, 1fr); padding-inline: 24px; }
+  }
+
+  /* fejléc */
+  .intro { grid-column: 1 / -1; max-width: 46rem; }
+  .eyebrow {
+    font: 600 0.78rem/1 var(--font-mono);
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.9rem;
+  }
+  h1 {
+    font: 800 clamp(2.2rem, 6vw, 3.6rem)/1.05 var(--font-display);
+    margin: 0 0 1rem; text-wrap: balance; letter-spacing: -0.01em;
+  }
+  h1 .x { color: var(--ink); }
+  h1 .o { color: var(--pencil); }
+  .lede { font-size: 1.12rem; margin: 0 0 1rem; max-width: 40rem; }
+  .howto {
+    display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    margin-top: 1.5rem; padding: 0; list-style: none;
+  }
+  .howto li {
+    background: var(--sheet); border: 1px solid var(--line); border-radius: 6px;
+    padding: 0.75rem 0.9rem; font-size: 0.92rem;
+  }
+  .howto b { display: block; font-family: var(--font-display); font-size: 1rem; margin-bottom: 0.15rem; }
+
+  /* tartalomjegyzék */
+  nav.toc { font-size: 0.92rem; min-width: 0; }
+  @media (min-width: 980px) {
+    nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 1.5rem); align-self: start; max-height: calc(100vh - 3rem); overflow-y: auto; }
+  }
+  nav.toc h2 { font: 600 0.78rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.75rem; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; }
+  nav.toc a {
+    display: grid; grid-template-columns: 1.8rem 1fr; gap: 0.4rem; align-items: baseline;
+    padding: 0.3rem 0.5rem; border-radius: 4px; color: var(--text); text-decoration: none;
+  }
+  nav.toc a:hover { background: var(--sheet); }
+  nav.toc a .n { font: 600 0.85rem var(--font-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+  nav.toc a.is-done { color: var(--muted); }
+  nav.toc a.is-done .n::after { content: " ✓"; color: var(--pencil); }
+
+  /* fejezetek */
+  main { min-width: 0; display: grid; gap: 3.5rem; }
+  .chapter { min-width: 0; display: grid; gap: 1.25rem; scroll-margin-top: 1.5rem; }
+  .ch-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1rem; align-items: start; }
+  .ch-num {
+    width: 3.25rem; height: 3.25rem; display: grid; place-items: center;
+    border: 2px solid var(--text); background: var(--sheet);
+    font: 800 1.5rem/1 var(--font-display); font-variant-numeric: tabular-nums;
+  }
+  .ch-meta { margin: 0 0 0.2rem; font: 0.82rem/1.4 var(--font-mono); color: var(--muted); }
+  .ch-meta .hash { color: var(--pencil); font-weight: 600; }
+  h2 { font: 800 clamp(1.45rem, 3.4vw, 1.9rem)/1.15 var(--font-display); margin: 0; text-wrap: balance; }
+  .done { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; font-size: 0.88rem; color: var(--muted); cursor: pointer; }
+  .done input { width: 1.05rem; height: 1.05rem; accent-color: var(--pencil); }
+  .chapter > p, .chapter > ul { margin: 0; max-width: 46rem; }
+
+  .file {
+    min-width: 0; background: var(--sheet); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1.25rem clamp(1rem, 3vw, 1.6rem);
+    display: grid; gap: 0.9rem;
+  }
+  .file > * { margin: 0; min-width: 0; }
+  .file h3 { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; font: 600 1rem/1.3 var(--font-mono); }
+  .badge {
+    font: 600 0.7rem/1 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0.32rem 0.5rem; border-radius: 3px; border: 1px solid currentColor;
+  }
+  .badge.new { color: var(--ink); }
+  .badge.mod { color: var(--pencil); }
+  .badge.cmd { color: var(--muted); }
+  .file ol, .file ul { padding-left: 1.3rem; display: grid; gap: 0.45rem; }
+  .file li > p { margin: 0.35rem 0 0; }
+
+  code { font-family: var(--font-mono); font-size: 0.9em; }
+  :not(pre) > code { background: var(--code-bg); padding: 0.08em 0.32em; border-radius: 3px; overflow-wrap: anywhere; }
+  pre { margin: 0; font: 0.86rem/1.55 var(--font-mono); tab-size: 4; }
+  pre.hint {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px;
+    padding: 0.75rem 0.9rem; overflow-x: auto; margin-top: 0.4rem;
+  }
+  .note {
+    border-left: 3px solid var(--pencil); padding: 0.15rem 0 0.15rem 0.9rem; color: var(--text);
+    font-size: 0.95rem;
+  }
+  .note b { color: var(--pencil); }
+  .check { font-size: 0.95rem; color: var(--muted); }
+  .check b { color: var(--text); }
+
+  /* rejtett megoldás */
+  .solution { border: 1px dashed var(--line); border-radius: 6px; overflow: hidden; }
+  .sol-bar {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.5rem;
+    padding: 0.5rem 0.75rem; background: var(--code-bg); border-bottom: 1px dashed var(--line);
+    font-size: 0.85rem; color: var(--muted);
+  }
+  .sol-bar .legend { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .sol-bar .legend i { width: 0.9rem; height: 0.9rem; background: var(--mark); border-left: 3px solid var(--mark-edge); display: inline-block; }
+  .sol-actions { display: flex; gap: 0.4rem; }
+  button {
+    font: 600 0.85rem/1 var(--font-body); color: var(--sheet); background: var(--text);
+    border: 0; border-radius: 4px; padding: 0.55rem 0.8rem; cursor: pointer;
+  }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .code-wrap { position: relative; background: var(--code-bg); }
+  .code-wrap pre { padding: 0.6rem 0; overflow-x: auto; }
+  .code-wrap .l { display: block; padding: 0 0.9rem; min-height: 1.55em; white-space: pre; border-left: 3px solid transparent; }
+  .code-wrap .l.add { background: var(--mark); border-left-color: var(--mark-edge); }
+  .solution:not(.open) .code-wrap { max-height: 8.5rem; overflow: hidden; }
+  .solution:not(.open) .code-wrap pre { filter: blur(5px); user-select: none; pointer-events: none; }
+  .solution:not(.open) .copy { display: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .code-wrap pre { transition: filter 0.25s ease; }
+  }
+
+  footer { grid-column: 1 / -1; color: var(--muted); font-size: 0.88rem; border-top: 1px solid var(--line); padding-top: 1.25rem; }
+</style>
+</head>
+<body>
+
+
+<div class="page">
+  <header class="intro">
+    <p class="eyebrow">minigame · React 19 + Vite · 11 lépés + kitekintés</p>
+    <h1>Építsd fel az amőbát: <span class="x">X</span> bal, <span class="o">O</span> jobb kattintás</h1>
+    <p class="lede">
+      Ez az útmutató a projekt építését segíti: a működés fő egységei fejezetekbe vannak bontva, azon belül pedig fájlonként
+      láthatod, mit kell megírnod. A végére egy működő 3×3-as amőbád lesz győzelem- és döntetlenfigyeléssel.
+    </p>
+    <ul class="howto">
+      <li><b>Először próbáld meg egyedül</b>A lépések leírják, mit írj és milyen neveket használj. A kis kódrészletek segítenek elindulni.</li>
+      <li><b>Ha elakadtál</b>A „Megoldás mutatása” gomb felfedi az adott fájl teljes kódját az adott lépés után.</li>
+      <li><b>Kiemelt sorok</b>A megoldásban sárga kiemelés jelzi, mely sorok újak vagy változtak ebben a lépésben.</li>
+    </ul>
+  </header>
+
+  <nav class="toc" aria-label="Fejezetek">
+    <h2>Fejezetek</h2>
+    <ol id="toc"></ol>
+  </nav>
+
+  <main>
+
+    <!-- ===================== 1 ===================== -->
+    <section class="chapter" id="lepes-1" data-title="Projekt létrehozása">
+      <div class="ch-head">
+        <div class="ch-num">1</div>
+        <div>
+          <p class="ch-meta"><span class="hash">4065831</span> · init</p>
+          <h2>Projekt létrehozása</h2>
+          <label class="done"><input type="checkbox" id="done-1"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>Egy üres React + Vite projekttel kezdünk, és kitakarítjuk belőle a sablon mintatartalmát, hogy tiszta lappal induljunk.</p>
+
+      <article class="file">
+        <h3><span class="badge cmd">terminál</span>projekt létrehozása</h3>
+        <ol>
+          <li>Hozd létre a projektet a Vite React-sablonjával:
+<pre class="hint"><code>npm create vite@latest minigame -- --template react
+cd minigame
+npm install
+npm run dev</code></pre>
+          </li>
+          <li>Nyisd meg a kiírt címet (általában <code>http://localhost:5173</code>). Ha megjelenik a Vite + React kezdőoldala, minden rendben van.</li>
+          <li>A sablon létrehoz egy <code>.gitignore</code>, <code>eslint.config.js</code>, <code>vite.config.js</code> és <code>package.json</code> fájlt. Ezekhez nem kell hozzányúlnod.</li>
+          <li>Ha szeretnéd követni az előzményt, indíts egy git-tárolót: <code>git init</code>, majd minden fejezet végén commitolj.</li>
+        </ol>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/App.jsx</h3>
+        <ol>
+          <li>Töröld a sablon teljes tartalmát (a számlálót, a logókat és a <code>useState</code> importot).</li>
+          <li>Csak az <code>App.css</code> importja maradjon, és az <code>App</code> függvény egy egyszerű szöveget adjon vissza egy <em>fragmentben</em> (<code>&lt;&gt;…&lt;/&gt;</code>):
+<pre class="hint"><code>function App() {
+  return &lt;&gt;Hello world&lt;/&gt;;
+}</code></pre>
+          </li>
+          <li>Hagyd meg a fájl végén az <code>export default App;</code> sort, mert a <code>main.jsx</code> ezt importálja.</li>
+        </ol>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/App.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-1">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-1" inert aria-hidden="true"><pre><code><span class="l add">import "./App.css";</span><span class="l add"></span><span class="l add">function App() {</span><span class="l add">  return &lt;&gt;Hello world&lt;/&gt;;</span><span class="l add">}</span><span class="l add"></span><span class="l add">export default App;</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/App.css és src/index.css</h3>
+        <p>Mindkét fájl tartalmát töröld ki, de magukat a fájlokat hagyd meg. Az <code>App.css</code>-be később a tábla stílusai kerülnek. Ha a sablon létrehozott egy <code>src/assets</code> mappát, azt is törölheted.</p>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge cmd">ellenőrzés</span>index.html és src/main.jsx</h3>
+        <p>Ezek a sablonból változtatás nélkül maradnak. Érdemes megérteni, mit csinálnak: az <code>index.html</code>-ben van egy <code>&lt;div id="root"&gt;</code>, és a <code>main.jsx</code> a <code>createRoot</code> segítségével ebbe rajzolja ki az <code>&lt;App /&gt;</code> komponenst, <code>StrictMode</code>-ba csomagolva. A <code>StrictMode</code> fejlesztés közben kétszer futtat egyes részeket, hogy hamarabb előjöjjenek a hibák.</p>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/main.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-2">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-2" inert aria-hidden="true"><pre><code><span class="l add">import { StrictMode } from 'react'</span><span class="l add">import { createRoot } from 'react-dom/client'</span><span class="l add">import './index.css'</span><span class="l add">import App from './App.jsx'</span><span class="l add"></span><span class="l add">createRoot(document.getElementById('root')).render(</span><span class="l add">  &lt;StrictMode&gt;</span><span class="l add">    &lt;App /&gt;</span><span class="l add">  &lt;/StrictMode&gt;,</span><span class="l add">)</span></code></pre></div>
+        </div>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> a böngészőben csak a „Hello world” felirat látszik.</p>
+    </section>
+
+    <!-- ===================== 2 ===================== -->
+    <section class="chapter" id="lepes-2" data-title="Komponensek és propok">
+      <div class="ch-head">
+        <div class="ch-num">2</div>
+        <div>
+          <p class="ch-meta"><span class="hash">39cf8c6</span> · 4 comp prop</p>
+          <h2>Komponensek és propok</h2>
+          <label class="done"><input type="checkbox" id="done-2"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>Két komponenst hozunk létre: a <code>Board</code> a teljes táblát rajzolja, a <code>Square</code> pedig egyetlen mezőt. A <code>Board</code> tárolja az adatot, és <em>propként</em> adja át a mezőknek. Egyelőre egy sor, három mező.</p>
+
+      <article class="file">
+        <h3><span class="badge new">új fájl</span>src/components/Square.jsx</h3>
+        <ol>
+          <li>Hozd létre a <code>src/components</code> mappát, benne a <code>Square.jsx</code> fájlt.</li>
+          <li>Exportálj egy <code>Square</code> nevű függvénykomponenst <em>nevesített exporttal</em> (<code>export function</code>, nem <code>export default</code>).</li>
+          <li>A komponens egy propot kap, a <code>value</code>-t. A propokat a paraméterlistában bontsd ki (destrukturálás): <code>{ value }</code>.</li>
+          <li>Egy <code>&lt;button&gt;</code> elemet adjon vissza <code>square</code> CSS-osztállyal, a gomb szövege pedig legyen a <code>value</code>.
+<pre class="hint"><code>export function Square({ value }) {
+    return &lt;button className="square"&gt;{ /* ide jön az érték */ }&lt;/button&gt;;
+}</code></pre>
+          </li>
+        </ol>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Square.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-3">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-3" inert aria-hidden="true"><pre><code><span class="l add">export function Square({ value }) {</span><span class="l add">    return &lt;button className="square"&gt;{value}&lt;/button&gt;;</span><span class="l add">}</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge new">új fájl</span>src/components/Board.jsx</h3>
+        <ol>
+          <li>Importáld a <code>useState</code> hookot a <code>react</code>-ból, a <code>Square</code>-t pedig a <code>./Square</code>-ből (kapcsos zárójellel, mert nevesített export).</li>
+          <li>Exportálj egy <code>Board</code> függvénykomponenst.</li>
+          <li>Hozz létre egy állapotot <code>gameStatus</code> néven, kezdőértéke a <code>[1, 2, 3]</code> tömb. Most még csak olvassuk, ezért a setter nem kell:
+<pre class="hint"><code>const [gameStatus] = useState([1, 2, 3]);</code></pre>
+          </li>
+          <li>A visszaadott JSX egy <code>board</code> osztályú <code>div</code>, benne egy <code>board-row</code> osztályú <code>div</code>, abban pedig három <code>&lt;Square /&gt;</code>. Mindegyik a <code>gameStatus</code> egy elemét kapja <code>value</code> propként: <code>value={gameStatus[0]}</code>, <code>[1]</code>, <code>[2]</code>.</li>
+        </ol>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Board.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-4">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-4" inert aria-hidden="true"><pre><code><span class="l add">import { useState } from "react";</span><span class="l add">import { Square } from "./Square";</span><span class="l add"></span><span class="l add">export function Board() {</span><span class="l add">    const [gameStatus] = useState([1, 2, 3]);</span><span class="l add"></span><span class="l add">    return (</span><span class="l add">        &lt;div className="board"&gt;</span><span class="l add">            &lt;div className="board-row"&gt;</span><span class="l add">                &lt;Square value={gameStatus[0]} /&gt;</span><span class="l add">                &lt;Square value={gameStatus[1]} /&gt;</span><span class="l add">                &lt;Square value={gameStatus[2]} /&gt;</span><span class="l add">            &lt;/div&gt;</span><span class="l add">        &lt;/div&gt;</span><span class="l add">    );</span><span class="l add">}</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/App.jsx</h3>
+        <ol>
+          <li>Importáld a <code>Board</code> komponenst: <code>import { Board } from "./components/Board";</code></li>
+          <li>A „Hello world” helyett az <code>App</code> a <code>&lt;Board /&gt;</code>-ot adja vissza.</li>
+        </ol>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/App.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-5">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-5" inert aria-hidden="true"><pre><code><span class="l">import "./App.css";</span><span class="l add">import { Board } from "./components/Board";</span><span class="l"></span><span class="l">function App() {</span><span class="l add">  return &lt;Board /&gt;;</span><span class="l">}</span><span class="l"></span><span class="l">export default App;</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/App.css</h3>
+        <ol>
+          <li>A <code>.board-row</code> legyen <code>display: flex</code>, hogy a mezők egymás mellé kerüljenek.</li>
+          <li>A <code>.square</code> legyen 30×30 pixeles, fekete 1px-es kerettel. Középre igazítsd a tartalmát flexszel (<code>align-items</code>, <code>justify-content</code>), és állíts be <code>font-size: 25px</code>-et.</li>
+          <li>Trükk: a szomszédos mezők kerete duplán látszana. Ezt negatív margóval tüntetheted el:
+<pre class="hint"><code>margin-top: -1px;
+margin-right: -1px;</code></pre>
+          </li>
+        </ol>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/App.css – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-6">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-6" inert aria-hidden="true"><pre><code><span class="l add">.board-row {</span><span class="l add">    display: flex;</span><span class="l add">}</span><span class="l add"></span><span class="l add">.square {</span><span class="l add">    width: 30px;</span><span class="l add">    height: 30px;</span><span class="l add">    border: 1px solid black;</span><span class="l add">    margin-top: -1px;</span><span class="l add">    margin-right: -1px;</span><span class="l add">    display: flex;</span><span class="l add">    align-items: center;</span><span class="l add">    justify-content: center;</span><span class="l add">    font-size: 25px;</span><span class="l add">}</span></code></pre></div>
+        </div>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> három kis négyzet látszik egymás mellett 1, 2 és 3 felirattal.</p>
+    </section>
+
+    <!-- ===================== 3 ===================== -->
+    <section class="chapter" id="lepes-3" data-title="Kattintás kezelése">
+      <div class="ch-head">
+        <div class="ch-num">3</div>
+        <div>
+          <p class="ch-meta"><span class="hash">8ae836e</span> · 5 process button click</p>
+          <h2>Kattintás kezelése</h2>
+          <label class="done"><input type="checkbox" id="done-3"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>A mezők kattintásra reagálnak: a kattintott mező értéke eggyel nő. A lényeg az adatáramlás. Az állapot a <code>Board</code>-ban van, ezért a <code>Board</code> ad át egy függvényt a <code>Square</code>-nek, a <code>Square</code> pedig ezt hívja meg kattintáskor.</p>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/components/Square.jsx</h3>
+        <ol>
+          <li>Vegyél fel egy második propot <code>onSquareClick</code> néven: <code>{ value, onSquareClick }</code>.</li>
+          <li>Kösd rá a gomb <code>onClick</code> eseményére: <code>onClick={onSquareClick}</code>. Figyelj, hogy a függvényt add át, ne hívd meg (nincs <code>()</code> a végén).</li>
+          <li>A JSX-et több sorba tördelve tedd zárójelbe a <code>return (...)</code> után.</li>
+        </ol>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Square.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-7">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-7" inert aria-hidden="true"><pre><code><span class="l add">export function Square({ value, onSquareClick }) {</span><span class="l add">    return (</span><span class="l add">        &lt;button className="square" onClick={onSquareClick}&gt;</span><span class="l add">            {value}</span><span class="l add">        &lt;/button&gt;</span><span class="l add">    );</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/components/Board.jsx</h3>
+        <ol>
+          <li>Nevezd át az állapotot <code>status</code>-ra, és most már kérd el a settert is: <code>const [status, setStatus] = useState([1, 2, 3]);</code></li>
+          <li>Írj egy <code>handleClick(idx)</code> függvényt. Ne módosítsd a meglévő tömböt, hanem hozz létre egy újat a <code>map</code> segítségével, ahol csak az <code>idx</code> indexű elem nő eggyel, és ezt add át a <code>setStatus</code>-nak. A React csak akkor rajzol újra, ha új tömböt kap.
+<pre class="hint"><code>const newStatus = status.map((value, index) =&gt; (index === idx ? /* ? */ : value));
+setStatus(newStatus);</code></pre>
+          </li>
+          <li>Hibakereséshez tegyél a függvényen kívülre egy <code>console.log(status);</code> sort. Ez minden rajzolásnál kiírja az aktuális állapotot.</li>
+          <li>Minden <code>Square</code> kapjon egy <code>onSquareClick</code> propot. Nyílfüggvénnyel csomagold be, hogy a saját indexével hívja meg a <code>handleClick</code>-et: <code>onSquareClick={() =&gt; handleClick(0)}</code>. Ugyanígy az 1-es és 2-es mezőnél. Az <code>value</code> mostantól <code>status[0]</code> stb.</li>
+        </ol>
+        <p class="note"><b>Miért nyílfüggvény?</b> Ha <code>onSquareClick={handleClick(0)}</code>-t írnál, a függvény már rajzoláskor lefutna, és végtelen újrarajzolást okozna.</p>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Board.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-8">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-8" inert aria-hidden="true"><pre><code><span class="l">import { useState } from "react";</span><span class="l">import { Square } from "./Square";</span><span class="l"></span><span class="l">export function Board() {</span><span class="l add">    const [status, setStatus] = useState([1, 2, 3]);</span><span class="l add"></span><span class="l add">    function handleClick(idx) {</span><span class="l add">        const newStatus = status.map((value, index) =&gt; (index === idx ? value + 1 : value));</span><span class="l add">        setStatus(newStatus);</span><span class="l add">    }</span><span class="l add">    console.log(status);</span><span class="l"></span><span class="l">    return (</span><span class="l">        &lt;div className="board"&gt;</span><span class="l">            &lt;div className="board-row"&gt;</span><span class="l add">                &lt;Square value={status[0]} onSquareClick={() =&gt; handleClick(0)} /&gt;</span><span class="l add">                &lt;Square value={status[1]} onSquareClick={() =&gt; handleClick(1)} /&gt;</span><span class="l add">                &lt;Square value={status[2]} onSquareClick={() =&gt; handleClick(2)} /&gt;</span><span class="l">            &lt;/div&gt;</span><span class="l">        &lt;/div&gt;</span><span class="l">    );</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> egy mezőre kattintva a szám nő, a konzolban (F12) megjelenik az új tömb.</p>
+    </section>
+
+    <!-- ===================== 4 ===================== -->
+    <section class="chapter" id="lepes-4" data-title="Jobb klikk">
+      <div class="ch-head">
+        <div class="ch-num">4</div>
+        <div>
+          <p class="ch-meta"><span class="hash">d3e8ea4</span> · 6. right click handling</p>
+          <h2>Jobb klikk</h2>
+          <label class="done"><input type="checkbox" id="done-4"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>A két játékos két egérgombbal fog játszani. Először a jobb klikket kapjuk el, és letiltjuk a böngésző helyi menüjét.</p>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/components/Square.jsx</h3>
+        <ol>
+          <li>A komponensen belül hozz létre egy <code>handleContextMenu(event)</code> függvényt.</li>
+          <li>Hívd meg benne az <code>event.preventDefault()</code>-ot, hogy ne nyíljon meg a helyi menü, majd hívd meg az <code>onSquareClick</code>-et is, így a jobb klikk ugyanúgy növeli a számot, mint a bal.
+<pre class="hint"><code>function handleContextMenu(event) {
+    event.preventDefault();
+    onSquareClick(event);
+}</code></pre>
+          </li>
+          <li>Kösd a gomb <code>onContextMenu</code> eseményére: <code>onContextMenu={handleContextMenu}</code>.</li>
+        </ol>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Square.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-9">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-9" inert aria-hidden="true"><pre><code><span class="l">export function Square({ value, onSquareClick }) {</span><span class="l add">    function handleContextMenu(event) {</span><span class="l add">        event.preventDefault();</span><span class="l add">        onSquareClick(event);</span><span class="l add">    }</span><span class="l add"></span><span class="l">    return (</span><span class="l add">        &lt;button className="square" onClick={onSquareClick} onContextMenu={handleContextMenu}&gt;</span><span class="l">            {value}</span><span class="l">        &lt;/button&gt;</span><span class="l">    );</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> jobb klikkre nem jelenik meg menü, és a szám nő.</p>
+    </section>
+
+    <!-- ===================== 5 ===================== -->
+    <section class="chapter" id="lepes-5" data-title="Bal klikk X, jobb klikk O">
+      <div class="ch-head">
+        <div class="ch-num">5</div>
+        <div>
+          <p class="ch-meta"><span class="hash">034a9ea</span> · 7 left-right click handling</p>
+          <h2>Bal klikk X, jobb klikk O</h2>
+          <label class="done"><input type="checkbox" id="done-5"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>A <code>Square</code> megmondja, melyik gombbal kattintottak, a <code>Board</code> pedig ebből dönti el, hogy X vagy O kerüljön a mezőre. A számok eltűnnek, a mezők üresen indulnak.</p>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/components/Square.jsx</h3>
+        <ol>
+          <li>A fájl tetején exportálj két konstanst: <code>LEFT = "left"</code> és <code>RIGHT = "right"</code>. Konstanssal elkerülöd az elgépelt szövegekből adódó hibákat.</li>
+          <li>A bal klikk most egy nyílfüggvényen keresztül adja át, melyik gomb volt: <code>onClick={() =&gt; onSquareClick(LEFT)}</code>.</li>
+          <li>A <code>handleContextMenu</code>-ban az eseményobjektum helyett a <code>RIGHT</code> értéket add tovább: <code>onSquareClick(RIGHT)</code>.</li>
+        </ol>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Square.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-10">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-10" inert aria-hidden="true"><pre><code><span class="l add">export const LEFT = "left";</span><span class="l add">export const RIGHT = "right";</span><span class="l add"></span><span class="l">export function Square({ value, onSquareClick }) {</span><span class="l">    function handleContextMenu(event) {</span><span class="l">        event.preventDefault();</span><span class="l add">        onSquareClick(RIGHT);</span><span class="l">    }</span><span class="l"></span><span class="l">    return (</span><span class="l add">        &lt;button className="square" onClick={() =&gt; onSquareClick(LEFT)} onContextMenu={handleContextMenu}&gt;</span><span class="l">            {value}</span><span class="l">        &lt;/button&gt;</span><span class="l">    );</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/components/Board.jsx</h3>
+        <ol>
+          <li>Bővítsd az importot: <code>import { LEFT, RIGHT, Square } from "./Square";</code></li>
+          <li>A komponensen kívül vegyél fel két konstanst: <code>PLAYER_X = "X"</code> és <code>PLAYER_O = "O"</code>.</li>
+          <li>A kezdőállapot legyen három üres mező: <code>[undefined, undefined, undefined]</code>.</li>
+          <li>A <code>handleClick</code> két paramétert kap: <code>handleClick(idx, mouseButton)</code>. Egy <code>newValue</code> változóba döntsd el, mi kerül a mezőbe. Ismeretlen gomb esetén lépj ki a függvényből:
+<pre class="hint"><code>let newValue;
+if (mouseButton === LEFT) {
+    newValue = PLAYER_X;
+} else if (mouseButton === RIGHT) {
+    // ...
+} else return;</code></pre>
+          </li>
+          <li>A <code>map</code>-ben a növelés helyett a <code>newValue</code> kerüljön a kattintott helyre. A <code>console.log(status)</code> sort törölheted.</li>
+          <li>Írj egy rövid megjegyzést a függvény fölé, ami leírja a paramétereket (<code>idx</code>, <code>mouseButton</code>).</li>
+          <li>A mezőknél a nyílfüggvény most átveszi a gombot, és továbbadja: <code>onSquareClick={(mouseButton) =&gt; handleClick(0, mouseButton)}</code>.</li>
+        </ol>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Board.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-11">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-11" inert aria-hidden="true"><pre><code><span class="l">import { useState } from "react";</span><span class="l add">import { LEFT, RIGHT, Square } from "./Square";</span><span class="l add"></span><span class="l add">const PLAYER_X = "X";</span><span class="l add">const PLAYER_O = "O";</span><span class="l"></span><span class="l">export function Board() {</span><span class="l add">    const [status, setStatus] = useState([undefined, undefined, undefined]);</span><span class="l"></span><span class="l add">    // Update the game status, if the click is valid</span><span class="l add">    //  - idx: index of the square</span><span class="l add">    //  - mouseButton: left or right mouse button</span><span class="l add">    function handleClick(idx, mouseButton) {</span><span class="l add">        let newValue;</span><span class="l add">        if (mouseButton === LEFT) {</span><span class="l add">            newValue = PLAYER_X;</span><span class="l add">        } else if (mouseButton === RIGHT) {</span><span class="l add">            newValue = PLAYER_O;</span><span class="l add">        } else return;</span><span class="l add">        const newStatus = status.map((value, index) =&gt; (index === idx ? newValue : value));</span><span class="l">        setStatus(newStatus);</span><span class="l">    }</span><span class="l"></span><span class="l">    return (</span><span class="l">        &lt;div className="board"&gt;</span><span class="l">            &lt;div className="board-row"&gt;</span><span class="l add">                &lt;Square value={status[0]} onSquareClick={(mouseButton) =&gt; handleClick(0, mouseButton)} /&gt;</span><span class="l add">                &lt;Square value={status[1]} onSquareClick={(mouseButton) =&gt; handleClick(1, mouseButton)} /&gt;</span><span class="l add">                &lt;Square value={status[2]} onSquareClick={(mouseButton) =&gt; handleClick(2, mouseButton)} /&gt;</span><span class="l">            &lt;/div&gt;</span><span class="l">        &lt;/div&gt;</span><span class="l">    );</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/App.css</h3>
+        <p>Nagyítsd fel a mezőket, hogy kényelmesen lehessen játszani: a <code>.square</code> legyen <code>100px</code> széles és magas, a <code>font-size</code> pedig <code>85px</code>.</p>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/App.css – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-12">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-12" inert aria-hidden="true"><pre><code><span class="l">.board-row {</span><span class="l">    display: flex;</span><span class="l">}</span><span class="l"></span><span class="l">.square {</span><span class="l add">    width: 100px;</span><span class="l add">    height: 100px;</span><span class="l">    border: 1px solid black;</span><span class="l">    margin-top: -1px;</span><span class="l">    margin-right: -1px;</span><span class="l">    display: flex;</span><span class="l">    align-items: center;</span><span class="l">    justify-content: center;</span><span class="l add">    font-size: 85px;</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> bal klikkre X, jobb klikkre O kerül a mezőre. Egyelőre bármelyik mező felülírható, és ugyanaz a játékos többször is léphet egymás után.</p>
+    </section>
+
+    <!-- ===================== 6 ===================== -->
+    <section class="chapter" id="lepes-6" data-title="Felváltva lépő játékosok">
+      <div class="ch-head">
+        <div class="ch-num">6</div>
+        <div>
+          <p class="ch-meta"><span class="hash">5b23d4c</span> · 8 implement the swithing players</p>
+          <h2>Felváltva lépő játékosok</h2>
+          <label class="done"><input type="checkbox" id="done-6"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>Egyszerűsítünk: a <code>Square</code> közvetlenül a játékost (X vagy O) küldi, nem az egérgombot. A <code>Board</code> megjegyzi, ki lépett utoljára, és nem engedi, hogy ugyanaz kétszer egymás után lépjen.</p>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/components/Square.jsx</h3>
+        <ol>
+          <li>Cseréld le a <code>LEFT</code>/<code>RIGHT</code> konstansokat ezekre: <code>export const PLAYER_X = "X";</code> és <code>export const PLAYER_O = "O";</code>. Mostantól itt van a helyük, a <code>Board</code> innen importálja őket.</li>
+          <li>A bal klikk küldje a <code>PLAYER_X</code>-et, a jobb klikk (a <code>handleContextMenu</code>-ban) a <code>PLAYER_O</code>-t.</li>
+        </ol>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Square.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-13">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-13" inert aria-hidden="true"><pre><code><span class="l add">export const PLAYER_X = "X";</span><span class="l add">export const PLAYER_O = "O";</span><span class="l"></span><span class="l">export function Square({ value, onSquareClick }) {</span><span class="l">    function handleContextMenu(event) {</span><span class="l">        event.preventDefault();</span><span class="l add">        onSquareClick(PLAYER_O);</span><span class="l">    }</span><span class="l"></span><span class="l">    return (</span><span class="l add">        &lt;button className="square" onClick={() =&gt; onSquareClick(PLAYER_X)} onContextMenu={handleContextMenu}&gt;</span><span class="l">            {value}</span><span class="l">        &lt;/button&gt;</span><span class="l">    );</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/components/Board.jsx</h3>
+        <ol>
+          <li>Importáld a <code>useRef</code>-et is: <code>import { useRef, useState } from "react";</code>, a <code>Square</code>-ből pedig a <code>PLAYER_O</code> és <code>PLAYER_X</code> konstansokat. A régi <code>PLAYER_*</code> konstansokat és a <code>LEFT</code>/<code>RIGHT</code> importot töröld a fájlból.</li>
+          <li>A kezdőállapotot írd rövidebben: <code>new Array(3).fill(undefined)</code>. Így később könnyű lesz átírni 9 mezőre.</li>
+          <li>Hozz létre egy referenciát az utoljára lépő játékosnak: <code>let lastPlayer = useRef();</code></li>
+          <li>A <code>handleClick(idx, player)</code> második paramétere most már maga a játékos. A függvény elején két védőfeltétel legyen:
+<pre class="hint"><code>// ignore the invalid players (to make it foolproof)
+if (player !== PLAYER_O &amp;&amp; player !== PLAYER_X) return;
+
+// ignore the repeated steps
+if (lastPlayer.current === /* ? */) return;</code></pre>
+          </li>
+          <li>Ha a lépés érvényes, előbb jegyezd fel a játékost (<code>lastPlayer.current = player;</code>), aztán írd be a <code>player</code>-t a tömbbe. A <code>newValue</code>-s <code>if</code>/<code>else</code> ág már nem kell.</li>
+        </ol>
+        <p class="note"><b>Miért <code>useRef</code>, és miért nem <code>useState</code>?</b> A <code>lastPlayer</code> nem jelenik meg a képernyőn, ezért a változása miatt nem kell újrarajzolni. A ref értéke (<code>.current</code>) megmarad a rajzolások között, és azonnal frissül.</p>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Board.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-14">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-14" inert aria-hidden="true"><pre><code><span class="l add">import { useRef, useState } from "react";</span><span class="l add">import { PLAYER_O, PLAYER_X, Square } from "./Square";</span><span class="l"></span><span class="l">export function Board() {</span><span class="l add">    const [status, setStatus] = useState(new Array(3).fill(undefined));</span><span class="l add">    let lastPlayer = useRef();</span><span class="l"></span><span class="l add">    // Update the game status, ignore the click if the player is invalid or it is the same as the last one</span><span class="l">    //  - idx: index of the square</span><span class="l">    //  - mouseButton: left or right mouse button</span><span class="l add">    function handleClick(idx, player) {</span><span class="l add">        // ignore the invalid players (to make it foolproof)</span><span class="l add">        if (player !== PLAYER_O &amp;&amp; player !== PLAYER_X) return;</span><span class="l add"></span><span class="l add">        // ignore the repeated steps</span><span class="l add">        if (lastPlayer.current === player) return;</span><span class="l add"></span><span class="l add">        // update the status</span><span class="l add">        lastPlayer.current = player;</span><span class="l add">        const newStatus = status.map((value, index) =&gt; (index === idx ? player : value));</span><span class="l">        setStatus(newStatus);</span><span class="l">    }</span><span class="l"></span><span class="l">    return (</span><span class="l">        &lt;div className="board"&gt;</span><span class="l">            &lt;div className="board-row"&gt;</span><span class="l">                &lt;Square value={status[0]} onSquareClick={(mouseButton) =&gt; handleClick(0, mouseButton)} /&gt;</span><span class="l">                &lt;Square value={status[1]} onSquareClick={(mouseButton) =&gt; handleClick(1, mouseButton)} /&gt;</span><span class="l">                &lt;Square value={status[2]} onSquareClick={(mouseButton) =&gt; handleClick(2, mouseButton)} /&gt;</span><span class="l">            &lt;/div&gt;</span><span class="l">        &lt;/div&gt;</span><span class="l">    );</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> két bal klikk egymás után csak egy X-et tesz le. A második X csak egy O után jöhet.</p>
+    </section>
+
+    <!-- ===================== 7 ===================== -->
+    <section class="chapter" id="lepes-7" data-title="3×3-as tábla, foglalt mezők">
+      <div class="ch-head">
+        <div class="ch-num">7</div>
+        <div>
+          <p class="ch-meta"><span class="hash">94d9948</span> · 9 extend the board to 3*3, ignore occupied</p>
+          <h2>3×3-as tábla, foglalt mezők</h2>
+          <label class="done"><input type="checkbox" id="done-7"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>Kilenc mezőre bővítjük a táblát, és megtiltjuk a már foglalt mezők felülírását.</p>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/components/Board.jsx</h3>
+        <ol>
+          <li>Az állapot kilenc elemű legyen: <code>new Array(9).fill(undefined)</code>.</li>
+          <li>A <code>handleClick</code>-ben a két meglévő feltétel után adj hozzá egy harmadikat. Ha a mezőben már van valami, lépj ki:
+<pre class="hint"><code>// ignore the occupied cells
+if (status[idx]) return;</code></pre>
+            <p>A sorrend számít: ez a feltétel a <code>lastPlayer.current</code> beállítása <em>előtt</em> álljon, különben egy elutasított kattintás is „elhasználná” a játékos körét.</p>
+          </li>
+          <li>Másold le kétszer a <code>board-row</code> divet. A második sorban a 3–5, a harmadikban a 6–8 indexek legyenek. Az indexet mindkét helyen írd át: a <code>status[…]</code>-ban és a <code>handleClick(…)</code> hívásban is.</li>
+        </ol>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Board.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-15">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-15" inert aria-hidden="true"><pre><code><span class="l">import { useRef, useState } from "react";</span><span class="l">import { PLAYER_O, PLAYER_X, Square } from "./Square";</span><span class="l"></span><span class="l">export function Board() {</span><span class="l add">    const [status, setStatus] = useState(new Array(9).fill(undefined));</span><span class="l">    let lastPlayer = useRef();</span><span class="l"></span><span class="l">    // Update the game status, ignore the click if the player is invalid or it is the same as the last one</span><span class="l">    //  - idx: index of the square</span><span class="l">    //  - mouseButton: left or right mouse button</span><span class="l">    function handleClick(idx, player) {</span><span class="l">        // ignore the invalid players (to make it foolproof)</span><span class="l">        if (player !== PLAYER_O &amp;&amp; player !== PLAYER_X) return;</span><span class="l"></span><span class="l">        // ignore the repeated steps</span><span class="l">        if (lastPlayer.current === player) return;</span><span class="l"></span><span class="l add">        // ignore the occupied cells</span><span class="l add">        if (status[idx]) return;</span><span class="l add"></span><span class="l">        // update the status</span><span class="l">        lastPlayer.current = player;</span><span class="l">        const newStatus = status.map((value, index) =&gt; (index === idx ? player : value));</span><span class="l">        setStatus(newStatus);</span><span class="l">    }</span><span class="l"></span><span class="l">    return (</span><span class="l">        &lt;div className="board"&gt;</span><span class="l">            &lt;div className="board-row"&gt;</span><span class="l">                &lt;Square value={status[0]} onSquareClick={(mouseButton) =&gt; handleClick(0, mouseButton)} /&gt;</span><span class="l">                &lt;Square value={status[1]} onSquareClick={(mouseButton) =&gt; handleClick(1, mouseButton)} /&gt;</span><span class="l">                &lt;Square value={status[2]} onSquareClick={(mouseButton) =&gt; handleClick(2, mouseButton)} /&gt;</span><span class="l">            &lt;/div&gt;</span><span class="l add">            &lt;div className="board-row"&gt;</span><span class="l add">                &lt;Square value={status[3]} onSquareClick={(mouseButton) =&gt; handleClick(3, mouseButton)} /&gt;</span><span class="l add">                &lt;Square value={status[4]} onSquareClick={(mouseButton) =&gt; handleClick(4, mouseButton)} /&gt;</span><span class="l add">                &lt;Square value={status[5]} onSquareClick={(mouseButton) =&gt; handleClick(5, mouseButton)} /&gt;</span><span class="l add">            &lt;/div&gt;</span><span class="l add">            &lt;div className="board-row"&gt;</span><span class="l add">                &lt;Square value={status[6]} onSquareClick={(mouseButton) =&gt; handleClick(6, mouseButton)} /&gt;</span><span class="l add">                &lt;Square value={status[7]} onSquareClick={(mouseButton) =&gt; handleClick(7, mouseButton)} /&gt;</span><span class="l add">                &lt;Square value={status[8]} onSquareClick={(mouseButton) =&gt; handleClick(8, mouseButton)} /&gt;</span><span class="l add">            &lt;/div&gt;</span><span class="l">        &lt;/div&gt;</span><span class="l">    );</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> egy 3×3-as rács jelenik meg, és a foglalt mezőkre kattintva nem történik semmi.</p>
+    </section>
+
+    <!-- ===================== 8 ===================== -->
+    <section class="chapter" id="lepes-8" data-title="Győztes és újrakezdés">
+      <div class="ch-head">
+        <div class="ch-num">8</div>
+        <div>
+          <p class="ch-meta"><span class="hash">7b107b3</span> · 10 detect winner and reset</p>
+          <h2>Győztes és újrakezdés</h2>
+          <label class="done"><input type="checkbox" id="done-8"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>Minden lépés után megnézzük, kirakott-e valaki hármat egy sorba. Ha igen, kiírjuk a győztest, letiltjuk a további lépéseket, és megjelenik egy gomb az új játékhoz.</p>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/components/Board.jsx</h3>
+        <ol>
+          <li>A komponensen kívül hozz létre egy <code>WIN_POSITIONS</code> tömböt a nyerő hármasok indexeivel: 3 sor, 3 oszlop és 2 átló, összesen 8 hármas.
+<pre class="hint"><code>const WIN_POSITIONS = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    // ... még 2 oszlop és 2 átló
+];</code></pre>
+          </li>
+          <li>Új állapot a győztesnek: <code>const [winner, setWinner] = useState();</code></li>
+          <li>A <code>handleClick</code>-ben a foglalt mezős feltétel után: <code>if (winner) return;</code>. Ha már van győztes, nem lehet tovább lépni.</li>
+          <li>Írj egy <code>win_check(newStatus, player)</code> függvényt. A <code>WIN_POSITIONS</code> minden hármasára nézd meg, hogy a három mező (<code>c1</code>, <code>c2</code>, <code>c3</code>) nem üres és egyforma. Az eredmény egy <code>win_array</code> nevű, logikai értékekből álló tömb. Ha bármelyik eleme <code>true</code>, akkor <code>setWinner(player)</code>.
+<pre class="hint"><code>const win_array = WIN_POSITIONS.map((pos) =&gt; {
+    const c1 = newStatus[pos[0]];
+    const c2 = newStatus[pos[1]];
+    const c3 = newStatus[pos[2]];
+    return c1 &amp;&amp; c1 === c2 &amp;&amp; c1 === c3 ? true : false;
+});
+if (win_array.some((value) =&gt; value)) /* ... */;</code></pre>
+          </li>
+          <li>A <code>handleClick</code>-ben a <code>setStatus(newStatus)</code> előtt hívd meg a <code>win_check(newStatus, player)</code>-t.</li>
+          <li>Írj egy <code>handlePlayAgain()</code> függvényt, ami mindent visszaállít: üres, 9 elemű tömb a <code>setStatus</code>-nak, <code>setWinner(undefined)</code>, és <code>lastPlayer.current = undefined</code>.</li>
+          <li>A JSX végére, a sorok után feltételes megjelenítéssel (<code>&amp;&amp;</code>) tedd be az üzenetet és a gombot:
+<pre class="hint"><code>{winner &amp;&amp; &lt;div&gt;Game over! {winner} won&lt;/div&gt;}
+{winner &amp;&amp; &lt;button onClick={handlePlayAgain}&gt;Reset&lt;/button&gt;}</code></pre>
+          </li>
+        </ol>
+        <p class="note"><b>Miért <code>newStatus</code>, és miért nem <code>status</code>?</b> A <code>setStatus</code> nem frissíti azonnal a <code>status</code> változót, csak a következő rajzolásnál. Ezért a győzelmet a frissen kiszámolt tömbön kell vizsgálni.</p>
+        <p class="note"><b>Apró eltérés:</b> az eredeti commitban az üzenet <code>`Game over! {winner} won`</code> alakú. A JSX-ben a backtickek szó szerint megjelennek a képernyőn. Ha nem szeretnéd látni őket, hagyd el őket.</p>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Board.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-16">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-16" inert aria-hidden="true"><pre><code><span class="l">import { useRef, useState } from "react";</span><span class="l">import { PLAYER_O, PLAYER_X, Square } from "./Square";</span><span class="l"></span><span class="l add">const WIN_POSITIONS = [</span><span class="l add">    [0, 1, 2],</span><span class="l add">    [3, 4, 5],</span><span class="l add">    [6, 7, 8],</span><span class="l add">    [0, 3, 6],</span><span class="l add">    [1, 4, 7],</span><span class="l add">    [2, 5, 8],</span><span class="l add">    [0, 4, 8],</span><span class="l add">    [2, 4, 6],</span><span class="l add">];</span><span class="l add"></span><span class="l">export function Board() {</span><span class="l">    const [status, setStatus] = useState(new Array(9).fill(undefined));</span><span class="l add">    const [winner, setWinner] = useState();</span><span class="l">    let lastPlayer = useRef();</span><span class="l"></span><span class="l">    // Update the game status, ignore the click if the player is invalid or it is the same as the last one</span><span class="l">    //  - idx: index of the square</span><span class="l">    //  - mouseButton: left or right mouse button</span><span class="l">    function handleClick(idx, player) {</span><span class="l">        // ignore the invalid players (to make it foolproof)</span><span class="l">        if (player !== PLAYER_O &amp;&amp; player !== PLAYER_X) return;</span><span class="l"></span><span class="l">        // ignore the repeated steps</span><span class="l">        if (lastPlayer.current === player) return;</span><span class="l"></span><span class="l">        // ignore the occupied cells</span><span class="l">        if (status[idx]) return;</span><span class="l"></span><span class="l add">        // ignore if gameOver</span><span class="l add">        if (winner) return;</span><span class="l add"></span><span class="l">        // update the status</span><span class="l">        lastPlayer.current = player;</span><span class="l">        const newStatus = status.map((value, index) =&gt; (index === idx ? player : value));</span><span class="l add">        win_check(newStatus, player);</span><span class="l">        setStatus(newStatus);</span><span class="l">    }</span><span class="l"></span><span class="l add">    function win_check(newStatus, player) {</span><span class="l add">        const win_array = WIN_POSITIONS.map((pos) =&gt; {</span><span class="l add">            const c1 = newStatus[pos[0]];</span><span class="l add">            const c2 = newStatus[pos[1]];</span><span class="l add">            const c3 = newStatus[pos[2]];</span><span class="l add">            return c1 &amp;&amp; c1 === c2 &amp;&amp; c1 === c3 ? true : false;</span><span class="l add">        });</span><span class="l add">        console.log(newStatus, win_array);</span><span class="l add">        if (win_array.some((value) =&gt; value)) setWinner(player);</span><span class="l add">    }</span><span class="l add"></span><span class="l add">    function handlePlayAgain() {</span><span class="l add">        setStatus(new Array(9).fill(undefined));</span><span class="l add">        setWinner(undefined);</span><span class="l add">        lastPlayer.current = undefined;</span><span class="l add">    }</span><span class="l add"></span><span class="l">    return (</span><span class="l">        &lt;div className="board"&gt;</span><span class="l">            &lt;div className="board-row"&gt;</span><span class="l">                &lt;Square value={status[0]} onSquareClick={(mouseButton) =&gt; handleClick(0, mouseButton)} /&gt;</span><span class="l">                &lt;Square value={status[1]} onSquareClick={(mouseButton) =&gt; handleClick(1, mouseButton)} /&gt;</span><span class="l">                &lt;Square value={status[2]} onSquareClick={(mouseButton) =&gt; handleClick(2, mouseButton)} /&gt;</span><span class="l">            &lt;/div&gt;</span><span class="l">            &lt;div className="board-row"&gt;</span><span class="l">                &lt;Square value={status[3]} onSquareClick={(mouseButton) =&gt; handleClick(3, mouseButton)} /&gt;</span><span class="l">                &lt;Square value={status[4]} onSquareClick={(mouseButton) =&gt; handleClick(4, mouseButton)} /&gt;</span><span class="l">                &lt;Square value={status[5]} onSquareClick={(mouseButton) =&gt; handleClick(5, mouseButton)} /&gt;</span><span class="l">            &lt;/div&gt;</span><span class="l">            &lt;div className="board-row"&gt;</span><span class="l">                &lt;Square value={status[6]} onSquareClick={(mouseButton) =&gt; handleClick(6, mouseButton)} /&gt;</span><span class="l">                &lt;Square value={status[7]} onSquareClick={(mouseButton) =&gt; handleClick(7, mouseButton)} /&gt;</span><span class="l">                &lt;Square value={status[8]} onSquareClick={(mouseButton) =&gt; handleClick(8, mouseButton)} /&gt;</span><span class="l">            &lt;/div&gt;</span><span class="l add">            {winner &amp;&amp; &lt;div&gt;`Game over! {winner} won`&lt;/div&gt;}</span><span class="l add">            {winner &amp;&amp; &lt;button onClick={handlePlayAgain}&gt;Reset&lt;/button&gt;}</span><span class="l">        &lt;/div&gt;</span><span class="l">    );</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> három egyforma jel egy vonalban után megjelenik a „Game over! X won” üzenet és a Reset gomb. A Reset kiüríti a táblát.</p>
+    </section>
+
+    <!-- ===================== 9 ===================== -->
+    <section class="chapter" id="lepes-9" data-title="Az utolsó lépés kiemelése">
+      <div class="ch-head">
+        <div class="ch-num">9</div>
+        <div>
+          <p class="ch-meta"><span class="hash">7fc3b00</span> · 11 highlight last cell</p>
+          <h2>Az utolsó lépés kiemelése</h2>
+          <label class="done"><input type="checkbox" id="done-9"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>Szürke háttérrel jelöljük azt a mezőt, ahova legutóbb léptek, így látszik, hol tart a játék.</p>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/App.css</h3>
+        <p>Adj hozzá egy szabályt arra az esetre, amikor egy mezőn a <code>square</code> és a <code>lastcell</code> osztály is rajta van:</p>
+<pre class="hint"><code>.square.lastcell {
+    background-color: lightgray;
+}</code></pre>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/App.css – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-17">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-17" inert aria-hidden="true"><pre><code><span class="l">.board-row {</span><span class="l">    display: flex;</span><span class="l">}</span><span class="l"></span><span class="l">.square {</span><span class="l">    width: 100px;</span><span class="l">    height: 100px;</span><span class="l">    border: 1px solid black;</span><span class="l">    margin-top: -1px;</span><span class="l">    margin-right: -1px;</span><span class="l">    display: flex;</span><span class="l">    align-items: center;</span><span class="l">    justify-content: center;</span><span class="l">    font-size: 85px;</span><span class="l">}</span><span class="l add"></span><span class="l add">.square.lastcell {</span><span class="l add">    background-color: lightgray;</span><span class="l add">}</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/components/Square.jsx</h3>
+        <ol>
+          <li>Vegyél fel egy új propot <code>highlight</code> néven: <code>{ value, highlight, onSquareClick }</code>.</li>
+          <li>A <code>className</code> legyen kiszámolt érték. Ha a <code>highlight</code> igaz, kerüljön mellé a <code>lastcell</code> osztály is (figyelj a szóközre):
+<pre class="hint"><code>className={"square" + (highlight ? " lastcell" : "")}</code></pre>
+          </li>
+          <li>Három attribútummal a gomb már hosszú, ezért tördeld őket külön sorokba.</li>
+        </ol>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Square.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-18">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-18" inert aria-hidden="true"><pre><code><span class="l">export const PLAYER_X = "X";</span><span class="l">export const PLAYER_O = "O";</span><span class="l"></span><span class="l add">export function Square({ value, highlight, onSquareClick }) {</span><span class="l">    function handleContextMenu(event) {</span><span class="l">        event.preventDefault();</span><span class="l">        onSquareClick(PLAYER_O);</span><span class="l">    }</span><span class="l"></span><span class="l">    return (</span><span class="l add">        &lt;button</span><span class="l add">            className={"square" + (highlight ? " lastcell" : "")}</span><span class="l add">            onClick={() =&gt; onSquareClick(PLAYER_X)}</span><span class="l add">            onContextMenu={handleContextMenu}</span><span class="l add">        &gt;</span><span class="l">            {value}</span><span class="l">        &lt;/button&gt;</span><span class="l">    );</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/components/Board.jsx</h3>
+        <ol>
+          <li>Új állapot: <code>const [lastCell, setLastCell] = useState();</code>. Ez annak a mezőnek az indexe, ahova legutóbb léptek.</li>
+          <li>A <code>handleClick</code> végén, a <code>setStatus</code> után: <code>setLastCell(idx);</code>. Hibakereséshez tehetsz a függvénybe <code>console.log</code> sorokat is (például <code>idx</code>, <code>player</code>, <code>lastPlayer.current</code>, illetve a <code>newStatus</code> kiírását).</li>
+          <li>A <code>handlePlayAgain</code>-ben töröld ezt is: <code>setLastCell(undefined);</code></li>
+          <li>Mind a kilenc <code>Square</code> kapja meg a <code>highlight</code> propot, például <code>highlight={0 === lastCell}</code>. Közben a nyílfüggvény paraméterét nevezd át <code>mouseButton</code>-ról <code>player</code>-re, mert már a játékost kapja: <code>onSquareClick={(player) =&gt; handleClick(0, player)}</code>. A függvény fölötti megjegyzésben is javítsd a nevet.</li>
+        </ol>
+        <p class="note"><b>Megjegyzés:</b> az eredeti commitban véletlenül kétszer szerepel a <code>win_check</code> függvény (ezt a következő commit javítja). Az itt látható megoldásban csak egy példány van, így neked sem kell duplikálnod.</p>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Board.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-19">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-19" inert aria-hidden="true"><pre><code><span class="l">import { useRef, useState } from "react";</span><span class="l">import { PLAYER_O, PLAYER_X, Square } from "./Square";</span><span class="l"></span><span class="l">const WIN_POSITIONS = [</span><span class="l">    [0, 1, 2],</span><span class="l">    [3, 4, 5],</span><span class="l">    [6, 7, 8],</span><span class="l">    [0, 3, 6],</span><span class="l">    [1, 4, 7],</span><span class="l">    [2, 5, 8],</span><span class="l">    [0, 4, 8],</span><span class="l">    [2, 4, 6],</span><span class="l">];</span><span class="l"></span><span class="l">export function Board() {</span><span class="l">    const [status, setStatus] = useState(new Array(9).fill(undefined));</span><span class="l">    const [winner, setWinner] = useState();</span><span class="l add">    const [lastCell, setLastCell] = useState();</span><span class="l">    let lastPlayer = useRef();</span><span class="l"></span><span class="l">    // Update the game status, ignore the click if the player is invalid or it is the same as the last one</span><span class="l">    //  - idx: index of the square</span><span class="l add">    //  - player: left or right mouse button</span><span class="l">    function handleClick(idx, player) {</span><span class="l add">        console.log(idx, player, lastPlayer.current);</span><span class="l">        // ignore the invalid players (to make it foolproof)</span><span class="l">        if (player !== PLAYER_O &amp;&amp; player !== PLAYER_X) return;</span><span class="l">        // ignore the repeated steps</span><span class="l">        if (lastPlayer.current === player) return;</span><span class="l"></span><span class="l">        // ignore the occupied cells</span><span class="l">        if (status[idx]) return;</span><span class="l"></span><span class="l">        // ignore if gameOver</span><span class="l">        if (winner) return;</span><span class="l"></span><span class="l">        // update the status</span><span class="l">        lastPlayer.current = player;</span><span class="l">        const newStatus = status.map((value, index) =&gt; (index === idx ? player : value));</span><span class="l">        win_check(newStatus, player);</span><span class="l add">        console.log(newStatus);</span><span class="l">        setStatus(newStatus);</span><span class="l add">        setLastCell(idx);</span><span class="l add">    }</span><span class="l add"></span><span class="l">    function win_check(newStatus, player) {</span><span class="l">        const win_array = WIN_POSITIONS.map((pos) =&gt; {</span><span class="l">            const c1 = newStatus[pos[0]];</span><span class="l">            const c2 = newStatus[pos[1]];</span><span class="l">            const c3 = newStatus[pos[2]];</span><span class="l">            return c1 &amp;&amp; c1 === c2 &amp;&amp; c1 === c3 ? true : false;</span><span class="l">        });</span><span class="l">        console.log(newStatus, win_array);</span><span class="l">        if (win_array.some((value) =&gt; value)) setWinner(player);</span><span class="l">    }</span><span class="l"></span><span class="l">    function handlePlayAgain() {</span><span class="l">        setStatus(new Array(9).fill(undefined));</span><span class="l">        setWinner(undefined);</span><span class="l add">        setLastCell(undefined);</span><span class="l">        lastPlayer.current = undefined;</span><span class="l">    }</span><span class="l"></span><span class="l">    return (</span><span class="l">        &lt;div className="board"&gt;</span><span class="l">            &lt;div className="board-row"&gt;</span><span class="l add">                &lt;Square value={status[0]} highlight={0 === lastCell} onSquareClick={(player) =&gt; handleClick(0, player)} /&gt;</span><span class="l add">                &lt;Square value={status[1]} highlight={1 === lastCell} onSquareClick={(player) =&gt; handleClick(1, player)} /&gt;</span><span class="l add">                &lt;Square value={status[2]} highlight={2 === lastCell} onSquareClick={(player) =&gt; handleClick(2, player)} /&gt;</span><span class="l">            &lt;/div&gt;</span><span class="l">            &lt;div className="board-row"&gt;</span><span class="l add">                &lt;Square value={status[3]} highlight={3 === lastCell} onSquareClick={(player) =&gt; handleClick(3, player)} /&gt;</span><span class="l add">                &lt;Square value={status[4]} highlight={4 === lastCell} onSquareClick={(player) =&gt; handleClick(4, player)} /&gt;</span><span class="l add">                &lt;Square value={status[5]} highlight={5 === lastCell} onSquareClick={(player) =&gt; handleClick(5, player)} /&gt;</span><span class="l">            &lt;/div&gt;</span><span class="l">            &lt;div className="board-row"&gt;</span><span class="l add">                &lt;Square value={status[6]} highlight={6 === lastCell} onSquareClick={(player) =&gt; handleClick(6, player)} /&gt;</span><span class="l add">                &lt;Square value={status[7]} highlight={7 === lastCell} onSquareClick={(player) =&gt; handleClick(7, player)} /&gt;</span><span class="l add">                &lt;Square value={status[8]} highlight={8 === lastCell} onSquareClick={(player) =&gt; handleClick(8, player)} /&gt;</span><span class="l">            &lt;/div&gt;</span><span class="l">            {winner &amp;&amp; &lt;div&gt;`Game over! {winner} won`&lt;/div&gt;}</span><span class="l">            {winner &amp;&amp; &lt;button onClick={handlePlayAgain}&gt;Reset&lt;/button&gt;}</span><span class="l">        &lt;/div&gt;</span><span class="l">    );</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> mindig az utoljára megjelölt mező szürke, Reset után egyik sem.</p>
+    </section>
+
+    <!-- ===================== 10 ===================== -->
+    <section class="chapter" id="lepes-10" data-title="Ciklusos kirajzolás">
+      <div class="ch-head">
+        <div class="ch-num">10</div>
+        <div>
+          <p class="ch-meta"><span class="hash">629cc9f</span> · 12. rework the repetitive row-square rendering</p>
+          <h2>Ciklusos kirajzolás</h2>
+          <label class="done"><input type="checkbox" id="done-10"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>Kilenc majdnem egyforma <code>Square</code>-sor van a kódban, ami nehezen karbantartható. Két egymásba ágyazott <code>map</code>-pel generáljuk őket, a tábla méretét pedig konstansba tesszük.</p>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/components/Board.jsx</h3>
+        <ol>
+          <li>A fájl tetején, a <code>WIN_POSITIONS</code> elé vegyél fel három konstanst:
+<pre class="hint"><code>const BOARD_SIDES = 3;
+const BOARD_INDICES = [...Array(BOARD_SIDES).keys()]; // [0, 1, 2]
+const CELL_COUNT = BOARD_SIDES * BOARD_SIDES;</code></pre>
+            <p>Az <code>Array(3).keys()</code> egy bejárót ad a 0, 1, 2 indexekre, a <code>[...]</code> pedig tömbbé alakítja.</p>
+          </li>
+          <li>A <code>9</code>-et mindkét helyen (kezdőállapot és <code>handlePlayAgain</code>) cseréld <code>CELL_COUNT</code>-ra.</li>
+          <li>A <code>handleClick</code> elejéről töröld az <code>idx</code>-et kiíró <code>console.log</code>-ot, és frissítsd a megjegyzést: <em>„ignore the click when it is not allowed”</em>.</li>
+          <li>A három <code>board-row</code> blokk helyére írj egy külső <code>map</code>-et a sorokra (<code>rowIndex</code>), benne egy belsőt az oszlopokra (<code>columnIndex</code>). A mező indexét ebből számold ki:
+<pre class="hint"><code>{BOARD_INDICES.map((rowIndex) =&gt; (
+    &lt;div className="board-row"&gt;
+        {BOARD_INDICES.map((columnIndex) =&gt; {
+            const index = rowIndex * BOARD_SIDES + columnIndex;
+            return (
+                &lt;Square /* value, highlight, onSquareClick az index alapján */ /&gt;
+            );
+        })}
+    &lt;/div&gt;
+))}</code></pre>
+          </li>
+        </ol>
+        <p class="note"><b>Tipp:</b> a React figyelmeztetést ír a konzolba, ha egy <code>map</code>-pel generált elemnek nincs <code>key</code> propja. Az eredeti kódban nincs ilyen, de érdemes hozzáadni: <code>key={rowIndex}</code> a sor divjére és <code>key={index}</code> a <code>Square</code>-re.</p>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Board.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-20">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-20" inert aria-hidden="true"><pre><code><span class="l">import { useRef, useState } from "react";</span><span class="l">import { PLAYER_O, PLAYER_X, Square } from "./Square";</span><span class="l"></span><span class="l add">const BOARD_SIDES = 3;</span><span class="l add">const BOARD_INDICES = [...Array(BOARD_SIDES).keys()];</span><span class="l add">const CELL_COUNT = BOARD_SIDES * BOARD_SIDES;</span><span class="l add"></span><span class="l">const WIN_POSITIONS = [</span><span class="l">    [0, 1, 2],</span><span class="l">    [3, 4, 5],</span><span class="l">    [6, 7, 8],</span><span class="l">    [0, 3, 6],</span><span class="l">    [1, 4, 7],</span><span class="l">    [2, 5, 8],</span><span class="l">    [0, 4, 8],</span><span class="l">    [2, 4, 6],</span><span class="l">];</span><span class="l"></span><span class="l">export function Board() {</span><span class="l add">    const [status, setStatus] = useState(new Array(CELL_COUNT).fill(undefined));</span><span class="l">    const [winner, setWinner] = useState();</span><span class="l">    const [lastCell, setLastCell] = useState();</span><span class="l">    let lastPlayer = useRef();</span><span class="l"></span><span class="l add">    // Update the game status, ignore the click when it is not allowed</span><span class="l">    //  - idx: index of the square</span><span class="l">    //  - player: left or right mouse button</span><span class="l">    function handleClick(idx, player) {</span><span class="l">        // ignore the invalid players (to make it foolproof)</span><span class="l">        if (player !== PLAYER_O &amp;&amp; player !== PLAYER_X) return;</span><span class="l">        // ignore the repeated steps</span><span class="l">        if (lastPlayer.current === player) return;</span><span class="l"></span><span class="l">        // ignore the occupied cells</span><span class="l">        if (status[idx]) return;</span><span class="l"></span><span class="l">        // ignore if gameOver</span><span class="l">        if (winner) return;</span><span class="l"></span><span class="l">        // update the status</span><span class="l">        lastPlayer.current = player;</span><span class="l">        const newStatus = status.map((value, index) =&gt; (index === idx ? player : value));</span><span class="l">        win_check(newStatus, player);</span><span class="l">        console.log(newStatus);</span><span class="l">        setStatus(newStatus);</span><span class="l">        setLastCell(idx);</span><span class="l">    }</span><span class="l"></span><span class="l">    function win_check(newStatus, player) {</span><span class="l">        const win_array = WIN_POSITIONS.map((pos) =&gt; {</span><span class="l">            const c1 = newStatus[pos[0]];</span><span class="l">            const c2 = newStatus[pos[1]];</span><span class="l">            const c3 = newStatus[pos[2]];</span><span class="l">            return c1 &amp;&amp; c1 === c2 &amp;&amp; c1 === c3 ? true : false;</span><span class="l">        });</span><span class="l">        console.log(newStatus, win_array);</span><span class="l">        if (win_array.some((value) =&gt; value)) setWinner(player);</span><span class="l">    }</span><span class="l"></span><span class="l">    function handlePlayAgain() {</span><span class="l add">        setStatus(new Array(CELL_COUNT).fill(undefined));</span><span class="l">        setWinner(undefined);</span><span class="l">        setLastCell(undefined);</span><span class="l">        lastPlayer.current = undefined;</span><span class="l">    }</span><span class="l"></span><span class="l">    return (</span><span class="l">        &lt;div className="board"&gt;</span><span class="l add">            {BOARD_INDICES.map((rowIndex) =&gt; (</span><span class="l add">                &lt;div className="board-row"&gt;</span><span class="l add">                    {BOARD_INDICES.map((columnIndex) =&gt; {</span><span class="l add">                        const index = rowIndex * BOARD_SIDES + columnIndex;</span><span class="l add">                        return (</span><span class="l add">                            &lt;Square</span><span class="l add">                                value={status[index]}</span><span class="l add">                                highlight={index === lastCell}</span><span class="l add">                                onSquareClick={(player) =&gt; handleClick(index, player)}</span><span class="l add">                            /&gt;</span><span class="l add">                        );</span><span class="l add">                    })}</span><span class="l add">                &lt;/div&gt;</span><span class="l add">            ))}</span><span class="l">            {winner &amp;&amp; &lt;div&gt;`Game over! {winner} won`&lt;/div&gt;}</span><span class="l">            {winner &amp;&amp; &lt;button onClick={handlePlayAgain}&gt;Reset&lt;/button&gt;}</span><span class="l">        &lt;/div&gt;</span><span class="l">    );</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> a játék pontosan ugyanúgy működik, mint előtte, csak a kód lett rövidebb.</p>
+    </section>
+
+    <!-- ===================== 11 ===================== -->
+    <section class="chapter" id="lepes-11" data-title="Döntetlen">
+      <div class="ch-head">
+        <div class="ch-num">11</div>
+        <div>
+          <p class="ch-meta"><span class="hash">7293787</span> · 13. handle draw state</p>
+          <h2>Döntetlen</h2>
+          <label class="done"><input type="checkbox" id="done-11"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>Ha betelik a tábla, és senki sem nyert, eddig nem történt semmi. Bevezetünk egy külön „vége a játéknak” állapotot, amely győzelemkor és döntetlenkor is igaz lesz.</p>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/components/Board.jsx</h3>
+        <ol>
+          <li>Új állapot: <code>const [gameOver, setGameOver] = useState(false);</code></li>
+          <li>A <code>win_check</code> végén tedd az eredményt egy <code>isGameOver</code> változóba. Ha igaz, állítsd be a győztest és a <code>gameOver</code>-t, majd lépj ki. Ha nincs győztes, de minden mező foglalt, az döntetlen:
+<pre class="hint"><code>const isGameOver = win_array.some((value) =&gt; value);
+if (isGameOver) {
+    setWinner(player);
+    setGameOver(true);
+    return;
+}
+if (newStatus.every((cell) =&gt; cell)) {
+    // ...
+}</code></pre>
+          </li>
+          <li>A <code>handlePlayAgain</code> állítsa vissza: <code>setGameOver(false);</code></li>
+          <li>A JSX végén most három eset van: győzelem, döntetlen, és a gomb, ami mindkettőnél látszik:
+<pre class="hint"><code>{gameOver &amp;&amp; winner &amp;&amp; &lt;div&gt;Game over! {winner} won&lt;/div&gt;}
+{gameOver &amp;&amp; !winner &amp;&amp; &lt;div&gt;Draw! No winner&lt;/div&gt;}
+{gameOver &amp;&amp; &lt;button onClick={handlePlayAgain}&gt;Reset&lt;/button&gt;}</code></pre>
+          </li>
+        </ol>
+        <p class="note"><b>Miért nem kell a <code>handleClick</code>-et módosítani?</b> A <code>handleClick</code> továbbra is csak az <code>if (winner) return;</code> feltételt nézi. Döntetlennél nincs győztes, de a tábla tele van, így a foglalt mezős feltétel úgyis megállít minden kattintást.</p>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Board.jsx – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-21">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-21" inert aria-hidden="true"><pre><code><span class="l">import { useRef, useState } from "react";</span><span class="l">import { PLAYER_O, PLAYER_X, Square } from "./Square";</span><span class="l"></span><span class="l">const BOARD_SIDES = 3;</span><span class="l">const BOARD_INDICES = [...Array(BOARD_SIDES).keys()];</span><span class="l">const CELL_COUNT = BOARD_SIDES * BOARD_SIDES;</span><span class="l"></span><span class="l">const WIN_POSITIONS = [</span><span class="l">    [0, 1, 2],</span><span class="l">    [3, 4, 5],</span><span class="l">    [6, 7, 8],</span><span class="l">    [0, 3, 6],</span><span class="l">    [1, 4, 7],</span><span class="l">    [2, 5, 8],</span><span class="l">    [0, 4, 8],</span><span class="l">    [2, 4, 6],</span><span class="l">];</span><span class="l"></span><span class="l">export function Board() {</span><span class="l">    const [status, setStatus] = useState(new Array(CELL_COUNT).fill(undefined));</span><span class="l">    const [winner, setWinner] = useState();</span><span class="l add">    const [gameOver, setGameOver] = useState(false);</span><span class="l">    const [lastCell, setLastCell] = useState();</span><span class="l">    let lastPlayer = useRef();</span><span class="l"></span><span class="l">    // Update the game status, ignore the click when it is not allowed</span><span class="l">    //  - idx: index of the square</span><span class="l">    //  - player: left or right mouse button</span><span class="l">    function handleClick(idx, player) {</span><span class="l">        // ignore the invalid players (to make it foolproof)</span><span class="l">        if (player !== PLAYER_O &amp;&amp; player !== PLAYER_X) return;</span><span class="l">        // ignore the repeated steps</span><span class="l">        if (lastPlayer.current === player) return;</span><span class="l"></span><span class="l">        // ignore the occupied cells</span><span class="l">        if (status[idx]) return;</span><span class="l"></span><span class="l">        // ignore if gameOver</span><span class="l">        if (winner) return;</span><span class="l"></span><span class="l">        // update the status</span><span class="l">        lastPlayer.current = player;</span><span class="l">        const newStatus = status.map((value, index) =&gt; (index === idx ? player : value));</span><span class="l">        win_check(newStatus, player);</span><span class="l">        console.log(newStatus);</span><span class="l">        setStatus(newStatus);</span><span class="l">        setLastCell(idx);</span><span class="l">    }</span><span class="l"></span><span class="l">    function win_check(newStatus, player) {</span><span class="l">        const win_array = WIN_POSITIONS.map((pos) =&gt; {</span><span class="l">            const c1 = newStatus[pos[0]];</span><span class="l">            const c2 = newStatus[pos[1]];</span><span class="l">            const c3 = newStatus[pos[2]];</span><span class="l">            return c1 &amp;&amp; c1 === c2 &amp;&amp; c1 === c3 ? true : false;</span><span class="l">        });</span><span class="l">        console.log(newStatus, win_array);</span><span class="l add">        const isGameOver = win_array.some((value) =&gt; value);</span><span class="l add">        if (isGameOver) {</span><span class="l add">            setWinner(player);</span><span class="l add">            setGameOver(true);</span><span class="l add">            return;</span><span class="l add">        }</span><span class="l add">        if (newStatus.every((cell) =&gt; cell)) {</span><span class="l add">            setGameOver(true);</span><span class="l add">        }</span><span class="l">    }</span><span class="l"></span><span class="l">    function handlePlayAgain() {</span><span class="l">        setStatus(new Array(CELL_COUNT).fill(undefined));</span><span class="l">        setWinner(undefined);</span><span class="l add">        setGameOver(false);</span><span class="l">        setLastCell(undefined);</span><span class="l">        lastPlayer.current = undefined;</span><span class="l">    }</span><span class="l"></span><span class="l">    return (</span><span class="l">        &lt;div className="board"&gt;</span><span class="l">            {BOARD_INDICES.map((rowIndex) =&gt; (</span><span class="l">                &lt;div className="board-row"&gt;</span><span class="l">                    {BOARD_INDICES.map((columnIndex) =&gt; {</span><span class="l">                        const index = rowIndex * BOARD_SIDES + columnIndex;</span><span class="l">                        return (</span><span class="l">                            &lt;Square</span><span class="l">                                value={status[index]}</span><span class="l">                                highlight={index === lastCell}</span><span class="l">                                onSquareClick={(player) =&gt; handleClick(index, player)}</span><span class="l">                            /&gt;</span><span class="l">                        );</span><span class="l">                    })}</span><span class="l">                &lt;/div&gt;</span><span class="l">            ))}</span><span class="l add">            {gameOver &amp;&amp; winner &amp;&amp; &lt;div&gt;`Game over! {winner} won`&lt;/div&gt;}</span><span class="l add">            {gameOver &amp;&amp; !winner &amp;&amp; &lt;div&gt;Draw! No winner&lt;/div&gt;}</span><span class="l add">            {gameOver &amp;&amp; &lt;button onClick={handlePlayAgain}&gt;Reset&lt;/button&gt;}</span><span class="l">        &lt;/div&gt;</span><span class="l">    );</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> játssz egy döntetlent. A tábla betelése után megjelenik a „Draw! No winner” felirat és a Reset gomb.</p>
+    </section>
+
+    <!-- ===================== KITEKINTÉS ===================== -->
+    <section class="chapter" id="kitekintes" data-title="Kitekintés">
+      <div class="ch-head">
+        <div class="ch-num">12</div>
+        <div>
+          <p class="ch-meta"><span class="hash">TOVÁBBI ÖTLETEK</span> · merre fejleszd tovább?</p>
+          <h2>Kitekintés</h2>
+          <label class="done"><input type="checkbox" id="done-12"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>Az alapjáték elkészült. Az alábbi ötletekkel tovább bővítheted: először válassz ki egyet, majd haladj kis, önálló lépésekben.</p>
+
+      <article class="file">
+        <h3>Lehetséges továbbfejlesztések</h3>
+        <ul>
+          <li><b>Szebb, kényelmesebb felület:</b> alakíts ki mobilon is jól használható elrendezést, jelezd egyértelműen, ki következik, és emeld ki a nyerő hármast. Figyelj a billentyűzetes használatra és a fókusz láthatóságára is.</li>
+          <li><b>Játékelőzmények:</b> minden lépésnél tárold a játékos jelét és a mező indexét, így megjelenítheted a lépések listáját, vagy akár több korábbi játszmát is visszanézhetővé tehetsz. Az előzményeket a böngésző <code>localStorage</code>-ában is megőrizheted.</li>
+          <li><b>Visszalépés:</b> őrizd meg a tábla állapotát minden lépés után, és adj „Visszavonás” gombot. Visszalépéskor a tábla mellett a következő játékost, a győztes állapotát és az utolsó lépés kiemelését is frissítsd.</li>
+          <li><b>Játékosstatisztikák:</b> számold külön az X- és O-győzelmeket, valamint a döntetleneket. Az eredményt csak a játszma lezárásakor rögzítsd, és a statisztikákat a tábla újraindításától külön kezeld; így egy új játszma nem törli az összesítést.</li>
+        </ul>
+      </article>
+    </section>
+
+  </main>
+
+  <footer>
+    Kész az amőba — jó kísérletezést a továbbfejlesztéséhez!
+  </footer>
+</div>
+
+<script>
+(function () {
+  // tartalomjegyzék a fejezetekből
+  var toc = document.getElementById("toc");
+  var chapters = document.querySelectorAll(".chapter");
+  chapters.forEach(function (ch, i) {
+    var li = document.createElement("li");
+    var a = document.createElement("a");
+    a.href = "#" + ch.id;
+    a.innerHTML = '<span class="n">' + (i + 1) + '</span><span></span>';
+    a.lastChild.textContent = ch.dataset.title;
+    li.appendChild(a);
+    toc.appendChild(li);
+  });
+
+  // „kész” jelölők – csak kényelmi funkció, hiba esetén is működik az oldal
+  function load(id) { try { return localStorage.getItem("amoba-" + id) === "1"; } catch (e) { return false; } }
+  function save(id, v) { try { localStorage.setItem("amoba-" + id, v ? "1" : "0"); } catch (e) {} }
+  chapters.forEach(function (ch, i) {
+    var box = ch.querySelector(".done input");
+    var link = toc.children[i].firstChild;
+    box.checked = load(box.id);
+    link.classList.toggle("is-done", box.checked);
+    box.addEventListener("change", function () {
+      save(box.id, box.checked);
+      link.classList.toggle("is-done", box.checked);
+    });
+  });
+
+  // megoldás felfedése és másolása
+  document.querySelectorAll(".solution").forEach(function (sol) {
+    var btn = sol.querySelector(".reveal");
+    var copy = sol.querySelector(".copy");
+    var wrap = sol.querySelector(".code-wrap");
+    btn.addEventListener("click", function () {
+      var open = sol.classList.toggle("open");
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      btn.textContent = open ? "Elrejtés" : "Megoldás mutatása";
+      wrap.inert = !open;
+      wrap.setAttribute("aria-hidden", open ? "false" : "true");
+    });
+    copy.addEventListener("click", function () {
+      var text = Array.prototype.map.call(sol.querySelectorAll(".l"), function (l) { return l.textContent; }).join("\n");
+      var done = function () { copy.textContent = "Másolva"; setTimeout(function () { copy.textContent = "Másolás"; }, 1500); };
+      var fallback = function () {
+        var range = document.createRange();
+        range.selectNodeContents(sol.querySelector("pre"));
+        var s = window.getSelection(); s.removeAllRanges(); s.addRange(range);
+        copy.textContent = "Kijelölve – Ctrl+C";
+      };
+      try {
+        navigator.clipboard.writeText(text).then(done, fallback);
+      } catch (e) { fallback(); }
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
