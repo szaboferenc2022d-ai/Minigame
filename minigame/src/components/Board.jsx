@@ -76,6 +76,7 @@ export function Board() {
 
     return (
         <div className="board">
+            <div class="eredmeny">Player X Win {0} | Player O Win {0} | Draw {0}</div>
             {BOARD_INDICES.map((rowIndex) => (
                 <div className="board-row">
                     {BOARD_INDICES.map((columnIndex) => {
@@ -90,9 +91,9 @@ export function Board() {
                     })}
                 </div>
             ))}
-            {gameOver && winner && <div>`Game over! {winner} won`</div>}
-            {gameOver && !winner && <div>Draw! No winner</div>}
-            {gameOver && <button onClick={handlePlayAgain}>Reset</button>}
+            {gameOver && winner && <div class="gameover">Game over! {winner} won</div>}
+            {gameOver && !winner && <div class="gameover">Draw! No winner</div>}
+            {gameOver && <button class="gomb" onClick={handlePlayAgain}>Reset</button>}
         </div>
     );
 }
