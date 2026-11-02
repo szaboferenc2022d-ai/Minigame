@@ -113,13 +113,14 @@ export function Board() {
     return (
         <div className="board">
             <div className="eredmeny">Player X Win {score.x} | Player O Win {score.o} | Draw {score.draws}</div>
+            <button onClick={() => setScore({ x: 0, o: 0, draws: 0 })}>eredmény törlése</button>
             {BOARD_INDICES.map((rowIndex) => (
                 <div className="board-row">
                     {BOARD_INDICES.map((columnIndex) => {
                         const index = rowIndex * BOARD_SIDES + columnIndex;
                         return (
                             <Square
-                                value={status[index]}
+                            value={status[index]}
                                 highlight={index === lastCell}
                                 onSquareClick={(player) => handleClick(index, player)}
                             />
@@ -127,6 +128,8 @@ export function Board() {
                     })}
                 </div>
             ))}
+            <button>Visza lépés</button>
+            <button onClick={handlePlayAgain}>újra inditás</button>
             <p>Aktuális játékos: {lastPlayer.current === PLAYER_X ? "O" : "X"}</p>
             {gameOver && winner && <div className="gameover">Game over! {winner} won</div>}
             {gameOver && !winner && <div className="gameover">Draw! No winner</div>}
