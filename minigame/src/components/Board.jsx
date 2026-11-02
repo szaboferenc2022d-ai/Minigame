@@ -127,6 +127,7 @@ export function Board() {
                     })}
                 </div>
             ))}
+            <p>Aktuális játékos: {lastPlayer.current === PLAYER_X ? "O" : "X"}</p>
             {gameOver && winner && <div className="gameover">Game over! {winner} won</div>}
             {gameOver && !winner && <div className="gameover">Draw! No winner</div>}
             {gameOver && <button className="gomb" onClick={handlePlayAgain}>Reset</button>}
