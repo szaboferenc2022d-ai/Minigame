@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amőba tesztelése</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+  /* Layout: ugyanaz a kockás füzetlap, mint a BUILD_GUIDE.html-ben */
+  :root {
+    --paper: #f6f7f3;
+    --sheet: #ffffff;
+    --grid: #dfe6ee;
+    --text: #1d2430;
+    --muted: #5b6676;
+    --line: #d5dce5;
+    --ink: #2547a8;        /* X – golyóstoll */
+    --pencil: #b8432f;     /* O – piros ceruza */
+    --mark: #fff1a8;       /* szövegkiemelő az új sorokhoz */
+    --mark-edge: #e3c43a;
+    --code-bg: #f1f3f6;
+    --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "IBM Plex Mono", Consolas, "Courier New", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14181e; --sheet: #1b2028; --grid: #20262f; --text: #e4e8ee; --muted: #9aa5b4;
+      --line: #2e3643; --ink: #8ea8ff; --pencil: #f08a74; --mark: #4a4216; --mark-edge: #b89a2a;
+      --code-bg: #12161c; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14181e; --sheet: #1b2028; --grid: #20262f; --text: #e4e8ee; --muted: #9aa5b4;
+    --line: #2e3643; --ink: #8ea8ff; --pencil: #f08a74; --mark: #4a4216; --mark-edge: #b89a2a;
+    --code-bg: #12161c; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: var(--text);
+    font: 16px/1.65 var(--font-body);
+  }
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 2.5rem 4rem;
+    display: grid;
+    gap: 2.5rem;
+  }
+  @media (min-width: 980px) {
+    .page { grid-template-columns: 15rem minmax(0, 1fr); padding-inline: 24px; }
+  }
+
+  /* fejléc */
+  .intro { grid-column: 1 / -1; max-width: 46rem; }
+  .eyebrow {
+    font: 600 0.78rem/1 var(--font-mono);
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.9rem;
+  }
+  h1 {
+    font: 800 clamp(2.2rem, 6vw, 3.6rem)/1.05 var(--font-display);
+    margin: 0 0 1rem; text-wrap: balance; letter-spacing: -0.01em;
+  }
+  h1 .x { color: var(--ink); }
+  h1 .o { color: var(--pencil); }
+  .lede { font-size: 1.12rem; margin: 0 0 1rem; max-width: 40rem; }
+  .howto {
+    display: grid; gap: 0.6rem; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    margin-top: 1.5rem; padding: 0; list-style: none;
+  }
+  .howto li {
+    background: var(--sheet); border: 1px solid var(--line); border-radius: 6px;
+    padding: 0.75rem 0.9rem; font-size: 0.92rem;
+  }
+  .howto b { display: block; font-family: var(--font-display); font-size: 1rem; margin-bottom: 0.15rem; }
+
+  /* tartalomjegyzék */
+  nav.toc { font-size: 0.92rem; min-width: 0; }
+  @media (min-width: 980px) {
+    nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 1.5rem); align-self: start; max-height: calc(100vh - 3rem); overflow-y: auto; }
+  }
+  nav.toc h2 { font: 600 0.78rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 0.75rem; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; }
+  nav.toc a {
+    display: grid; grid-template-columns: 1.8rem 1fr; gap: 0.4rem; align-items: baseline;
+    padding: 0.3rem 0.5rem; border-radius: 4px; color: var(--text); text-decoration: none;
+  }
+  nav.toc a:hover { background: var(--sheet); }
+  nav.toc a .n { font: 600 0.85rem var(--font-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+  nav.toc a.is-done { color: var(--muted); }
+  nav.toc a.is-done .n::after { content: " ✓"; color: var(--pencil); }
+
+  /* fejezetek */
+  main { min-width: 0; display: grid; gap: 3.5rem; }
+  .chapter { min-width: 0; display: grid; gap: 1.25rem; scroll-margin-top: 1.5rem; }
+  .ch-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1rem; align-items: start; }
+  .ch-num {
+    width: 3.25rem; height: 3.25rem; display: grid; place-items: center;
+    border: 2px solid var(--text); background: var(--sheet);
+    font: 800 1.5rem/1 var(--font-display); font-variant-numeric: tabular-nums;
+  }
+  .ch-meta { margin: 0 0 0.2rem; font: 0.82rem/1.4 var(--font-mono); color: var(--muted); }
+  .ch-meta .hash { color: var(--pencil); font-weight: 600; }
+  h2 { font: 800 clamp(1.45rem, 3.4vw, 1.9rem)/1.15 var(--font-display); margin: 0; text-wrap: balance; }
+  .done { display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.5rem; font-size: 0.88rem; color: var(--muted); cursor: pointer; }
+  .done input { width: 1.05rem; height: 1.05rem; accent-color: var(--pencil); }
+  .chapter > p, .chapter > ul { margin: 0; max-width: 46rem; }
+
+  .file {
+    min-width: 0; background: var(--sheet); border: 1px solid var(--line); border-radius: 8px;
+    padding: 1.25rem clamp(1rem, 3vw, 1.6rem);
+    display: grid; gap: 0.9rem;
+  }
+  .file > * { margin: 0; min-width: 0; }
+  .file h3 { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; font: 600 1rem/1.3 var(--font-mono); }
+  .badge {
+    font: 600 0.7rem/1 var(--font-body); letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 0.32rem 0.5rem; border-radius: 3px; border: 1px solid currentColor;
+  }
+  .badge.new { color: var(--ink); }
+  .badge.mod { color: var(--pencil); }
+  .badge.cmd { color: var(--muted); }
+  .file ol, .file ul { padding-left: 1.3rem; display: grid; gap: 0.45rem; }
+  .file li > p { margin: 0.35rem 0 0; }
+
+  code { font-family: var(--font-mono); font-size: 0.9em; }
+  :not(pre) > code { background: var(--code-bg); padding: 0.08em 0.32em; border-radius: 3px; overflow-wrap: anywhere; }
+  pre { margin: 0; font: 0.86rem/1.55 var(--font-mono); tab-size: 4; }
+  pre.hint {
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px;
+    padding: 0.75rem 0.9rem; overflow-x: auto; margin-top: 0.4rem;
+  }
+  .note {
+    border-left: 3px solid var(--pencil); padding: 0.15rem 0 0.15rem 0.9rem; color: var(--text);
+    font-size: 0.95rem;
+  }
+  .note b { color: var(--pencil); }
+  .check { font-size: 0.95rem; color: var(--muted); }
+  .check b { color: var(--text); }
+
+  /* rejtett megoldás */
+  .solution { border: 1px dashed var(--line); border-radius: 6px; overflow: hidden; }
+  .sol-bar {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0.5rem;
+    padding: 0.5rem 0.75rem; background: var(--code-bg); border-bottom: 1px dashed var(--line);
+    font-size: 0.85rem; color: var(--muted);
+  }
+  .sol-bar .legend { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .sol-bar .legend i { width: 0.9rem; height: 0.9rem; background: var(--mark); border-left: 3px solid var(--mark-edge); display: inline-block; }
+  .sol-actions { display: flex; gap: 0.4rem; }
+  button {
+    font: 600 0.85rem/1 var(--font-body); color: var(--sheet); background: var(--text);
+    border: 0; border-radius: 4px; padding: 0.55rem 0.8rem; cursor: pointer;
+  }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .code-wrap { position: relative; background: var(--code-bg); }
+  .code-wrap pre { padding: 0.6rem 0; overflow-x: auto; }
+  .code-wrap .l { display: block; padding: 0 0.9rem; min-height: 1.55em; white-space: pre; border-left: 3px solid transparent; }
+  .code-wrap .l.add { background: var(--mark); border-left-color: var(--mark-edge); }
+  .solution:not(.open) .code-wrap { max-height: 8.5rem; overflow: hidden; }
+  .solution:not(.open) .code-wrap pre { filter: blur(5px); user-select: none; pointer-events: none; }
+  .solution:not(.open) .copy { display: none; }
+  @media (prefers-reduced-motion: no-preference) {
+    .code-wrap pre { transition: filter 0.25s ease; }
+  }
+
+  footer { grid-column: 1 / -1; color: var(--muted); font-size: 0.88rem; border-top: 1px solid var(--line); padding-top: 1.25rem; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="intro">
+    <p class="eyebrow">minigame · Playwright · 4 lépés + kitekintés</p>
+    <h1>Teszteld az amőbát: <span class="x">X</span> és <span class="o">O</span> kattint helyetted</h1>
+    <p class="lede">
+      Ez az útmutató a kész amőbajátékhoz ad automatikus, böngészőben futó teszteket a <a href="https://playwright.dev/">Playwright</a>
+      segítségével. A fejezetek a <code>testing</code> ág commitjait követik. A végére a tesztek egy paranccsal elindítják a játékot,
+      rákattintanak a mezőkre, és ellenőrzik az eredményt, helyben és GitHubon is.
+    </p>
+    <ul class="howto">
+      <li><b>Előfeltétel</b>Az amőba a <code>BUILD_GUIDE.html</code> szerint elkészült, és az <code>npm run dev</code> elindítja.</li>
+      <li><b>Először próbáld meg egyedül</b>A lépések leírják, mit írj. Ha elakadtál, a „Megoldás mutatása” gomb felfedi a teljes fájlt.</li>
+      <li><b>Kiemelt sorok</b>A megoldásban sárga kiemelés jelzi, mely sorok újak vagy változtak ebben a lépésben.</li>
+    </ul>
+  </header>
+
+  <nav class="toc" aria-label="Fejezetek">
+    <h2>Fejezetek</h2>
+    <ol id="toc"></ol>
+  </nav>
+
+  <main>
+
+    <!-- ===================== 1 ===================== -->
+    <section class="chapter" id="teszt-1" data-title="Playwright telepítése">
+      <div class="ch-head">
+        <div class="ch-num">1</div>
+        <div>
+          <p class="ch-meta"><span class="hash">b201bf9</span> · init test</p>
+          <h2>Playwright telepítése</h2>
+          <label class="done"><input type="checkbox" id="done-1"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>A Playwright egy valódi böngészőt (Chromium, Firefox, WebKit) indít, és kódból kattintgat benne, ahogy egy felhasználó tenné. A telepítő mindent előkészít: a csomagot, a beállításfájlt, egy mintatesztet és egy GitHub Actions munkafolyamatot.</p>
+
+      <article class="file">
+        <h3><span class="badge cmd">terminál</span>a telepítő futtatása</h3>
+        <ol>
+          <li>Hozz létre egy külön ágat a tesztekhez, hogy a <code>main</code> tiszta maradjon:
+<pre class="hint"><code>git switch -c testing</code></pre>
+          </li>
+          <li>A projekt gyökerében indítsd el a Playwright telepítőjét:
+<pre class="hint"><code>npm init playwright@latest</code></pre>
+          </li>
+          <li>A kérdésekre így válaszolj:
+            <ul>
+              <li>Nyelv: <b>JavaScript</b></li>
+              <li>A tesztek mappája: <b>tests</b> (az alapértelmezett)</li>
+              <li>GitHub Actions munkafolyamat hozzáadása: <b>igen</b></li>
+              <li>Böngészők telepítése: <b>igen</b> (ez néhány percig is eltarthat)</li>
+            </ul>
+          </li>
+        </ol>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge cmd">ellenőrzés</span>mit hozott létre a telepítő?</h3>
+        <p>Ezeket a fájlokat nem kell kézzel megírnod, de érdemes átnézni őket:</p>
+        <ul>
+          <li><code>package.json</code>: két új fejlesztési függőség, a <code>@playwright/test</code> és a <code>@types/node</code>.</li>
+          <li><code>playwright.config.js</code>: a tesztfuttató beállításai. Ezt a következő fejezetben a saját játékunkhoz igazítjuk.</li>
+          <li><code>tests/example.spec.js</code>: két mintateszt, amelyek a <code>playwright.dev</code> oldalt nyitják meg, nem a mi játékunkat.</li>
+          <li><code>.github/workflows/playwright.yml</code>: GitHubon minden push után lefuttatja a teszteket (a 4. fejezetben részletezzük).</li>
+          <li><code>.gitignore</code>: kiegészül a <code>test-results/</code> és <code>playwright-report/</code> mappákkal. Ezek a futtatás kimenetei, nem kerülnek a gitbe.</li>
+        </ul>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>tests/example.spec.js – a generált mintateszt</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-1">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-1" inert aria-hidden="true"><pre><code><span class="l add">// @ts-check</span><span class="l add">import { test, expect } from '@playwright/test';</span><span class="l add"></span><span class="l add">test('has title', async ({ page }) =&gt; {</span><span class="l add">  await page.goto('https://playwright.dev/');</span><span class="l add"></span><span class="l add">  // Expect a title "to contain" a substring.</span><span class="l add">  await expect(page).toHaveTitle(/Playwright/);</span><span class="l add">});</span><span class="l add"></span><span class="l add">test('get started link', async ({ page }) =&gt; {</span><span class="l add">  await page.goto('https://playwright.dev/');</span><span class="l add"></span><span class="l add">  // Click the get started link.</span><span class="l add">  await page.getByRole('link', { name: 'Get started' }).click();</span><span class="l add"></span><span class="l add">  // Expects page to have a heading with the name of Installation.</span><span class="l add">  await expect(page.getByRole('heading', { name: 'Installation' })).toBeVisible();</span><span class="l add">});</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge cmd">terminál</span>a mintatesztek futtatása</h3>
+        <ol>
+          <li>Futtasd le a teszteket:
+<pre class="hint"><code>npx playwright test</code></pre>
+            <p>A két mintateszt mindhárom böngészőben lefut, ez összesen 6 teszt.</p>
+          </li>
+          <li>Nyisd meg az eredményeket a böngészőben:
+<pre class="hint"><code>npx playwright show-report</code></pre>
+          </li>
+        </ol>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> a terminál <code>6 passed</code> eredményt ír, a riportban pedig mind a 6 teszt zöld. Ha hálózati hibát kapsz, ellenőrizd a netkapcsolatot, mert a mintatesztek egy külső oldalt nyitnak meg.</p>
+    </section>
+
+    <!-- ===================== 2 ===================== -->
+    <section class="chapter" id="teszt-2" data-title="Beállítás a saját játékhoz">
+      <div class="ch-head">
+        <div class="ch-num">2</div>
+        <div>
+          <p class="ch-meta"><span class="hash">41c8037</span> · test board and player turns (1/2)</p>
+          <h2>Beállítás a saját játékhoz</h2>
+          <label class="done"><input type="checkbox" id="done-2"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>A tesztek eddig egy idegen oldalt nyitottak meg. Most beállítjuk, hogy a Playwright maga indítsa el a Vite fejlesztői szervert, és a mi játékunkat tesztelje. Kényelmes npm parancsokat is felveszünk.</p>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>package.json</h3>
+        <ol>
+          <li>A <code>scripts</code> részbe vegyél fel két új parancsot:
+            <ul>
+              <li><code>test:headless</code>: <code>playwright test</code>, vagyis láthatatlan böngészővel, gyorsan fut.</li>
+              <li><code>test</code>: <code>playwright test --headed</code>, vagyis látható böngészőablakkal fut, így követheted, mit csinál a teszt.</li>
+            </ul>
+          </li>
+          <li>Ne felejtsd el a vesszőt a <code>preview</code> sor végén, különben a JSON hibás lesz.</li>
+        </ol>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>package.json – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-2">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-2" inert aria-hidden="true"><pre><code><span class="l">{</span><span class="l">  "name": "minigame",</span><span class="l">  "private": true,</span><span class="l">  "version": "0.0.0",</span><span class="l">  "type": "module",</span><span class="l">  "scripts": {</span><span class="l">    "dev": "vite",</span><span class="l">    "build": "vite build",</span><span class="l">    "lint": "eslint .",</span><span class="l add">    "preview": "vite preview",</span><span class="l add">    "test:headless": "playwright test",</span><span class="l add">    "test": "playwright test --headed"</span><span class="l">  },</span><span class="l">  "dependencies": {</span><span class="l">    "react": "^19.2.8",</span><span class="l">    "react-dom": "^19.2.8"</span><span class="l">  },</span><span class="l">  "devDependencies": {</span><span class="l">    "@eslint/js": "^10.0.1",</span><span class="l">    "@playwright/test": "^1.64.1",</span><span class="l">    "@types/node": "^26.6.5",</span><span class="l">    "@types/react": "^19.2.18",</span><span class="l">    "@types/react-dom": "^19.2.7",</span><span class="l">    "@vitejs/plugin-react": "^6.1.1",</span><span class="l">    "eslint": "^10.10.0",</span><span class="l">    "eslint-plugin-react-hooks": "^7.1.1",</span><span class="l">    "eslint-plugin-react-refresh": "^0.5.6",</span><span class="l">    "globals": "^17.12.0",</span><span class="l">    "vite": "^8.3.0"</span><span class="l">  }</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>playwright.config.js</h3>
+        <ol>
+          <li><b>Riport:</b> helyben elég a terminálba írt lista, a HTML-riport csak a CI-n kell:
+<pre class="hint"><code>reporter: process.env.CI ? 'html' : 'list',</code></pre>
+          </li>
+          <li><b>Base URL:</b> a <code>use</code> részben vedd ki a megjegyzésből a <code>baseURL</code> sort, és írd át a Vite címére: <code>'http://localhost:5173'</code>. Így a tesztekben elég <code>page.goto('/')</code>-t írni.</li>
+          <li><b>Böngészők:</b> a <code>firefox</code> és <code>webkit</code> projektet tedd megjegyzésbe. Egy böngészővel a tesztek háromszor gyorsabban futnak. Később bármikor visszakapcsolhatod őket.</li>
+          <li><b>Fejlesztői szerver:</b> a fájl végén vedd ki a megjegyzésből a <code>webServer</code> blokkot, és állítsd be a Vite-ra:
+<pre class="hint"><code>webServer: {
+  command: 'npm run dev -- --host 127.0.0.1',
+  url: 'http://127.0.0.1:5173',
+  reuseExistingServer: !process.env.CI,
+},</code></pre>
+            <p>A <code>--</code> utáni kapcsolót az npm továbbadja a Vite-nak. A Playwright addig vár, amíg az <code>url</code> válaszol, és csak utána indítja a teszteket.</p>
+          </li>
+        </ol>
+        <p class="note"><b>Mit jelent a <code>reuseExistingServer</code>?</b> Ha már fut egy <code>npm run dev</code> egy másik terminálban, a Playwright azt használja, és nem indít újat. A CI-n (ahol a <code>CI</code> környezeti változó be van állítva) mindig friss szervert indít.</p>
+        <p class="note"><b>ESLint-tipp:</b> az <code>npm run lint</code> hibát jelezhet, hogy a <code>process</code> nincs definiálva, mert az ESLint böngészős kódként nézi a fájlt. Ezt a fájl elején egy importtal javíthatod: <code>import process from "node:process";</code>. Ez nincs benne a commitban, de a helyi munkapéldányban már szerepel.</p>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>playwright.config.js – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-3">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-3" inert aria-hidden="true"><pre><code><span class="l">// @ts-check</span><span class="l">import { defineConfig, devices } from '@playwright/test';</span><span class="l"></span><span class="l">/**</span><span class="l"> * Read environment variables from file.</span><span class="l"> * https://github.com/motdotla/dotenv</span><span class="l"> */</span><span class="l">// import dotenv from 'dotenv';</span><span class="l">// import path from 'path';</span><span class="l">// dotenv.config({ path: path.resolve(__dirname, '.env') });</span><span class="l"></span><span class="l">/**</span><span class="l"> * @see https://playwright.dev/docs/test-configuration</span><span class="l"> */</span><span class="l">export default defineConfig({</span><span class="l">  testDir: './tests',</span><span class="l add">  </span><span class="l">  /* Run tests in files in parallel */</span><span class="l">  fullyParallel: true,</span><span class="l">  /* Fail the build on CI if you accidentally left test.only in the source code. */</span><span class="l">  forbidOnly: !!process.env.CI,</span><span class="l">  /* Retry on CI only */</span><span class="l">  retries: process.env.CI ? 2 : 0,</span><span class="l">  /* Opt out of parallel tests on CI. */</span><span class="l">  workers: process.env.CI ? 1 : undefined,</span><span class="l">  /* Reporter to use. See https://playwright.dev/docs/test-reporters */</span><span class="l add">  reporter: process.env.CI ? 'html' : 'list',</span><span class="l">  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */</span><span class="l">  use: {</span><span class="l">    /* Base URL to use in actions like `await page.goto('')`. */</span><span class="l add">    baseURL: 'http://localhost:5173',</span><span class="l"></span><span class="l">    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */</span><span class="l">    trace: 'on-first-retry',</span><span class="l">  },</span><span class="l"></span><span class="l">  /* Configure projects for major browsers */</span><span class="l">  projects: [</span><span class="l">    {</span><span class="l">      name: 'chromium',</span><span class="l">      use: { ...devices['Desktop Chrome'] },</span><span class="l">    },</span><span class="l"></span><span class="l add">    // {</span><span class="l add">    //   name: 'firefox',</span><span class="l add">    //   use: { ...devices['Desktop Firefox'] },</span><span class="l add">    // },</span><span class="l"></span><span class="l add">    // {</span><span class="l add">    //   name: 'webkit',</span><span class="l add">    //   use: { ...devices['Desktop Safari'] },</span><span class="l add">    // },</span><span class="l"></span><span class="l">    /* Test against mobile viewports. */</span><span class="l">    // {</span><span class="l">    //   name: 'Mobile Chrome',</span><span class="l">    //   use: { ...devices['Pixel 5'] },</span><span class="l">    // },</span><span class="l">    // {</span><span class="l">    //   name: 'Mobile Safari',</span><span class="l">    //   use: { ...devices['iPhone 12'] },</span><span class="l">    // },</span><span class="l"></span><span class="l">    /* Test against branded browsers. */</span><span class="l">    // {</span><span class="l">    //   name: 'Microsoft Edge',</span><span class="l">    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },</span><span class="l">    // },</span><span class="l">    // {</span><span class="l">    //   name: 'Google Chrome',</span><span class="l">    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },</span><span class="l">    // },</span><span class="l">  ],</span><span class="l"></span><span class="l">  /* Run your local dev server before starting the tests */</span><span class="l add">  webServer: {</span><span class="l add">    command: 'npm run dev -- --host 127.0.0.1',</span><span class="l add">    url: 'http://127.0.0.1:5173',</span><span class="l add">    reuseExistingServer: !process.env.CI,</span><span class="l add">  },</span><span class="l">});</span></code></pre></div>
+        </div>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> az <code>npm run test:headless</code> elindítja a Vite szervert. A mintatesztek még a régi oldalt nyitják meg, ezért csak 2 teszt fut (chromiumban). A következő fejezetben lecseréljük őket.</p>
+    </section>
+
+    <!-- ===================== 3 ===================== -->
+    <section class="chapter" id="teszt-3" data-title="Az első játéktesztek">
+      <div class="ch-head">
+        <div class="ch-num">3</div>
+        <div>
+          <p class="ch-meta"><span class="hash">41c8037</span> · test board and player turns (2/2)</p>
+          <h2>Az első játéktesztek</h2>
+          <label class="done"><input type="checkbox" id="done-3"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>Két tesztet írunk: az egyik megszámolja a tábla mezőit, a másik ellenőrzi, hogy bal klikkre X, jobb klikkre O kerül a mezőbe. A mezőket a <code>square</code> CSS-osztály alapján találjuk meg.</p>
+
+      <article class="file">
+        <h3><span class="badge cmd">törlés</span>tests/example.spec.js</h3>
+        <p>A mintatesztekre már nincs szükség. Töröld a fájlt.</p>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge new">új fájl</span>tests/game.spec.js</h3>
+        <ol>
+          <li>Az első sor legyen <code>// @ts-check</code> (így a szerkesztő jelzi a típushibákat), majd importáld a <code>test</code>-et és az <code>expect</code>-et a <code>@playwright/test</code>-ből.</li>
+          <li>Minden teszt előtt nyisd meg a játékot. A <code>test.beforeEach</code> egy közös előkészítő lépés, ami minden teszt előtt lefut, így minden teszt üres táblával indul:
+<pre class="hint"><code>test.beforeEach(async ({ page }) =&gt; {
+  await page.goto('/');
+});</code></pre>
+          </li>
+          <li><b>Első teszt</b> (<code>'the board has 9 squares'</code>): kérd le a mezőket egy <em>lokátorral</em>: <code>page.locator('.square')</code>. Ellenőrizd, hogy pontosan 9 ilyen elem van: <code>toHaveCount(9)</code>.</li>
+          <li><b>Második teszt</b> (<code>'players take turns'</code>):
+            <ul>
+              <li>Kattints bal gombbal az első mezőre (<code>squares.nth(0).click()</code>), olvasd ki a szövegét a <code>textContent()</code>-tel, és ellenőrizd, hogy <code>'X'</code>.</li>
+              <li>Kattints jobb gombbal a második mezőre, majd ellenőrizd, hogy <code>'O'</code> lett:
+<pre class="hint"><code>await squares.nth(1).click({ button: 'right' });</code></pre>
+              </li>
+            </ul>
+          </li>
+        </ol>
+        <p class="note"><b>Miért kell az <code>await</code>?</b> Minden böngészőművelet (megnyitás, kattintás, kiolvasás) időbe telik, és ígéretet (<code>Promise</code>) ad vissza. Ha lemarad az <code>await</code>, a teszt nem várja meg a kattintást, és véletlenszerűen bukik el.</p>
+        <p class="note"><b>Tipp:</b> a <code>textContent()</code> + <code>toEqual</code> páros egyszer olvas, és nem vár. Biztosabb a Playwright „webes” ellenőrzése, ami pár másodpercig újrapróbálkozik, amíg a feltétel teljesül: <code>await expect(squares.nth(0)).toHaveText('X');</code></p>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>tests/game.spec.js – teljes fájl, kiemelve az új sorok</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-4">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-4" inert aria-hidden="true"><pre><code><span class="l add">// @ts-check</span><span class="l add">import { test, expect } from '@playwright/test';</span><span class="l add"> </span><span class="l add">test.beforeEach(async ({ page }) =&gt; {</span><span class="l add">  await page.goto('/');</span><span class="l add">});</span><span class="l add"></span><span class="l add">test('the board has 9 squares', async ({ page }) =&gt; {</span><span class="l add">  const squares = page.locator('.square');</span><span class="l add">  await expect(squares).toHaveCount(9);</span><span class="l add">});</span><span class="l add"></span><span class="l add"></span><span class="l add"></span><span class="l add">test('players take turns', async ({ page }) =&gt; {</span><span class="l add">  const squares = page.locator('.square');</span><span class="l add">  let texts;</span><span class="l add">  </span><span class="l add">  await squares.nth(0).click();</span><span class="l add">  texts = await squares.nth(0).textContent();</span><span class="l add">  expect(texts).toEqual('X');</span><span class="l add"></span><span class="l add">  await squares.nth(1).click({button: 'right'});</span><span class="l add">  texts = await squares.nth(1).textContent();</span><span class="l add">  expect(texts).toEqual('O');</span><span class="l add"></span><span class="l add">});</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge mod">módosítás</span>src/components/Board.jsx</h3>
+        <p>Ugyanebben a commitban javítva lett az építési útmutató 8. lépésében jelzett apróság: a győzelmi üzenet körüli backtickek eddig szó szerint megjelentek a képernyőn. Töröld őket:</p>
+<pre class="hint"><code>{gameOver &amp;&amp; winner &amp;&amp; &lt;div&gt;Game over! {winner} won&lt;/div&gt;}</code></pre>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>src/components/Board.jsx – teljes fájl, kiemelve a változott sor</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-5">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-5" inert aria-hidden="true"><pre><code><span class="l">import { useRef, useState } from "react";</span><span class="l">import { PLAYER_O, PLAYER_X, Square } from "./Square";</span><span class="l"></span><span class="l">const BOARD_SIDES = 3;</span><span class="l">const BOARD_INDICES = [...Array(BOARD_SIDES).keys()];</span><span class="l">const CELL_COUNT = BOARD_SIDES * BOARD_SIDES;</span><span class="l"></span><span class="l">const WIN_POSITIONS = [</span><span class="l">    [0, 1, 2],</span><span class="l">    [3, 4, 5],</span><span class="l">    [6, 7, 8],</span><span class="l">    [0, 3, 6],</span><span class="l">    [1, 4, 7],</span><span class="l">    [2, 5, 8],</span><span class="l">    [0, 4, 8],</span><span class="l">    [2, 4, 6],</span><span class="l">];</span><span class="l"></span><span class="l">export function Board() {</span><span class="l">    const [status, setStatus] = useState(new Array(CELL_COUNT).fill(undefined));</span><span class="l">    const [winner, setWinner] = useState();</span><span class="l">    const [gameOver, setGameOver] = useState(false);</span><span class="l">    const [lastCell, setLastCell] = useState();</span><span class="l">    let lastPlayer = useRef();</span><span class="l"></span><span class="l">    // Update the game status, ignore the click when it is not allowed</span><span class="l">    //  - idx: index of the square</span><span class="l">    //  - player: left or right mouse button</span><span class="l">    function handleClick(idx, player) {</span><span class="l">        // ignore the invalid players (to make it foolproof)</span><span class="l">        if (player !== PLAYER_O &amp;&amp; player !== PLAYER_X) return;</span><span class="l">        // ignore the repeated steps</span><span class="l">        if (lastPlayer.current === player) return;</span><span class="l"></span><span class="l">        // ignore the occupied cells</span><span class="l">        if (status[idx]) return;</span><span class="l"></span><span class="l">        // ignore if gameOver</span><span class="l">        if (winner) return;</span><span class="l"></span><span class="l">        // update the status</span><span class="l">        lastPlayer.current = player;</span><span class="l">        const newStatus = status.map((value, index) =&gt; (index === idx ? player : value));</span><span class="l">        win_check(newStatus, player);</span><span class="l">        console.log(newStatus);</span><span class="l">        setStatus(newStatus);</span><span class="l">        setLastCell(idx);</span><span class="l">    }</span><span class="l"></span><span class="l">    function win_check(newStatus, player) {</span><span class="l">        const win_array = WIN_POSITIONS.map((pos) =&gt; {</span><span class="l">            const c1 = newStatus[pos[0]];</span><span class="l">            const c2 = newStatus[pos[1]];</span><span class="l">            const c3 = newStatus[pos[2]];</span><span class="l">            return c1 &amp;&amp; c1 === c2 &amp;&amp; c1 === c3 ? true : false;</span><span class="l">        });</span><span class="l">        console.log(newStatus, win_array);</span><span class="l">        const isGameOver = win_array.some((value) =&gt; value);</span><span class="l">        if (isGameOver) {</span><span class="l">            setWinner(player);</span><span class="l">            setGameOver(true);</span><span class="l">            return;</span><span class="l">        }</span><span class="l">        if (newStatus.every((cell) =&gt; cell)) {</span><span class="l">            setGameOver(true);</span><span class="l">        }</span><span class="l">    }</span><span class="l"></span><span class="l">    function handlePlayAgain() {</span><span class="l">        setStatus(new Array(CELL_COUNT).fill(undefined));</span><span class="l">        setWinner(undefined);</span><span class="l">        setGameOver(false);</span><span class="l">        setLastCell(undefined);</span><span class="l">        lastPlayer.current = undefined;</span><span class="l">    }</span><span class="l"></span><span class="l">    return (</span><span class="l">        &lt;div className="board"&gt;</span><span class="l">            {BOARD_INDICES.map((rowIndex) =&gt; (</span><span class="l">                &lt;div className="board-row"&gt;</span><span class="l">                    {BOARD_INDICES.map((columnIndex) =&gt; {</span><span class="l">                        const index = rowIndex * BOARD_SIDES + columnIndex;</span><span class="l">                        return (</span><span class="l">                            &lt;Square</span><span class="l">                                value={status[index]}</span><span class="l">                                highlight={index === lastCell}</span><span class="l">                                onSquareClick={(player) =&gt; handleClick(index, player)}</span><span class="l">                            /&gt;</span><span class="l">                        );</span><span class="l">                    })}</span><span class="l">                &lt;/div&gt;</span><span class="l">            ))}</span><span class="l add">            {gameOver &amp;&amp; winner &amp;&amp; &lt;div&gt;Game over! {winner} won&lt;/div&gt;}</span><span class="l">            {gameOver &amp;&amp; !winner &amp;&amp; &lt;div&gt;Draw! No winner&lt;/div&gt;}</span><span class="l">            {gameOver &amp;&amp; &lt;button onClick={handlePlayAgain}&gt;Reset&lt;/button&gt;}</span><span class="l">        &lt;/div&gt;</span><span class="l">    );</span><span class="l">}</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge cmd">terminál</span>futtatás</h3>
+<pre class="hint"><code>npm test                # látható böngészővel
+npm run test:headless   # háttérben, gyorsan</code></pre>
+        <p>Ha egy teszt elbukik, a terminál megmutatja a várt és a kapott értéket. Lépésenkénti hibakereséshez használd a <code>npx playwright test --ui</code> parancsot.</p>
+        <p class="note"><b>Mik a <code>[WebServer]</code> sorok?</b> A Vite szerver kimenete. Ha ott <code>Each child in a list should have a unique "key" prop</code> figyelmeztetést látsz, az a React jelzése az építési útmutató 10. lépéséből: a <code>map</code>-pel generált sorokról és mezőkről hiányzik a <code>key</code>. A teszteket ez nem rontja el, de érdemes javítani.</p>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> a terminál <code>2 passed</code> eredményt ír. Próbáld ki azt is, hogy elrontod a tesztet (például <code>toHaveCount(8)</code>), és nézd meg, hogyan bukik el. Utána állítsd vissza.</p>
+    </section>
+
+    <!-- ===================== 4 ===================== -->
+    <section class="chapter" id="teszt-4" data-title="Tesztek a GitHubon">
+      <div class="ch-head">
+        <div class="ch-num">4</div>
+        <div>
+          <p class="ch-meta"><span class="hash">b201bf9</span> · init test · .github/workflows/playwright.yml</p>
+          <h2>Tesztek a GitHubon</h2>
+          <label class="done"><input type="checkbox" id="done-4"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>A telepítő által létrehozott munkafolyamat (CI) minden pushnál egy tiszta Ubuntu gépen telepíti a projektet, és lefuttatja a teszteket. Ezt a fájlt nem kell módosítanod, de érdemes megérteni, mert a <code>playwright.config.js</code> több beállítása is ehhez igazodik.</p>
+
+      <article class="file">
+        <h3><span class="badge cmd">ellenőrzés</span>.github/workflows/playwright.yml</h3>
+        <ol>
+          <li><b>Mikor fut?</b> Ha a <code>main</code> vagy <code>master</code> ágra pusholsz, illetve ha ezekre nyitsz pull requestet. A <code>testing</code> ágra pusholva még nem fut, csak a PR megnyitásakor.</li>
+          <li><b>Mit csinál?</b> Letölti a kódot, telepíti a Node.js-t, <code>npm ci</code>-vel telepíti a függőségeket, letölti a böngészőket, majd lefuttatja az <code>npx playwright test</code> parancsot.</li>
+          <li><b>Riport:</b> a futás végén a <code>playwright-report</code> mappát feltölti <em>artifactként</em>. A GitHub Actions fülön 30 napig letölthető, akkor is, ha a teszt elbukott.</li>
+        </ol>
+        <div class="solution">
+          <div class="sol-bar">
+            <span class="legend"><i aria-hidden="true"></i>.github/workflows/playwright.yml – a generált munkafolyamat</span>
+            <span class="sol-actions"><button type="button" class="ghost copy">Másolás</button><button type="button" class="reveal" aria-expanded="false" aria-controls="sol-6">Megoldás mutatása</button></span>
+          </div>
+          <div class="code-wrap" id="sol-6" inert aria-hidden="true"><pre><code><span class="l add">name: Playwright Tests</span><span class="l add">on:</span><span class="l add">  push:</span><span class="l add">    branches: [ main, master ]</span><span class="l add">  pull_request:</span><span class="l add">    branches: [ main, master ]</span><span class="l add">jobs:</span><span class="l add">  test:</span><span class="l add">    timeout-minutes: 60</span><span class="l add">    runs-on: ubuntu-latest</span><span class="l add">    steps:</span><span class="l add">    - uses: actions/checkout@v4</span><span class="l add">    - uses: actions/setup-node@v4</span><span class="l add">      with:</span><span class="l add">        node-version: lts/*</span><span class="l add">    - name: Install dependencies</span><span class="l add">      run: npm ci</span><span class="l add">    - name: Install Playwright Browsers</span><span class="l add">      run: npx playwright install --with-deps</span><span class="l add">    - name: Run Playwright tests</span><span class="l add">      run: npx playwright test</span><span class="l add">    - uses: actions/upload-artifact@v4</span><span class="l add">      if: ${{ !cancelled() }}</span><span class="l add">      with:</span><span class="l add">        name: playwright-report</span><span class="l add">        path: playwright-report/</span><span class="l add">        retention-days: 30</span></code></pre></div>
+        </div>
+      </article>
+
+      <article class="file">
+        <h3><span class="badge cmd">ellenőrzés</span>a <code>process.env.CI</code> ágak a configban</h3>
+        <p>A GitHub Actions beállítja a <code>CI</code> környezeti változót, ezért ott a config másként viselkedik:</p>
+        <ul>
+          <li><code>forbidOnly</code>: ha bent felejtettél egy <code>test.only</code>-t, a CI-futás hibával leáll, így nem marad ki csendben a többi teszt.</li>
+          <li><code>retries: 2</code>: a CI-n egy elbukott tesztet még kétszer újrapróbál. Ha a második próbálkozás sikerül, a teszt „flaky”, vagyis instabil.</li>
+          <li><code>workers: 1</code>: a CI-n egymás után futnak a tesztek, a kevés processzormag miatt.</li>
+          <li><code>reporter: 'html'</code>: ezt a riportot tölti fel a munkafolyamat.</li>
+          <li><code>trace: 'on-first-retry'</code>: újrapróbáláskor nyomkövetést rögzít, ezt a riportban lépésenként visszanézheted.</li>
+          <li><code>reuseExistingServer: false</code>: mindig saját Vite szervert indít.</li>
+        </ul>
+      </article>
+      <p class="check"><b>Ellenőrzés:</b> pushold a <code>testing</code> ágat, és nyiss róla pull requestet a <code>main</code>-re. A PR alján megjelenik a <i>Playwright Tests</i> ellenőrzés, és pár perc múlva zöld pipára vált.</p>
+    </section>
+
+    <!-- ===================== KITEKINTÉS ===================== -->
+    <section class="chapter" id="kitekintes" data-title="Kitekintés: további tesztek">
+      <div class="ch-head">
+        <div class="ch-num">5</div>
+        <div>
+          <p class="ch-meta"><span class="hash">TOVÁBBI ÖTLETEK</span> · mit érdemes még tesztelni?</p>
+          <h2>Kitekintés: további tesztek</h2>
+          <label class="done"><input type="checkbox" id="done-5"> Ezzel a lépéssel kész vagyok</label>
+        </div>
+      </div>
+      <p>Az építési útmutató minden lépésének van egy „Ellenőrzés” sora. Ezek jó kiindulópontok automatikus tesztekhez. Írj mindegyikhez egy új <code>test(...)</code>-et a <code>game.spec.js</code>-be.</p>
+
+      <article class="file">
+        <h3>Lehetséges tesztek</h3>
+        <ul>
+          <li><b>Ugyanaz a játékos nem léphet kétszer:</b> két bal klikk két különböző mezőre. A második mező üres marad: <code>await expect(squares.nth(1)).toHaveText('');</code></li>
+          <li><b>Foglalt mező:</b> bal klikk a 0. mezőre, majd jobb klikk ugyanoda. A mezőben továbbra is <code>X</code> áll.</li>
+          <li><b>Győzelem:</b> rakd ki az X-et a 0, 1, 2 mezőkre (közben O a 3-ra és 4-re), és ellenőrizd az üzenetet: <code>await expect(page.getByText('Game over! X won')).toBeVisible();</code>. Győzelem után a további kattintások ne változtassanak semmin.</li>
+          <li><b>Döntetlen:</b> töltsd ki a táblát nyerő hármas nélkül, és keresd a <code>Draw! No winner</code> szöveget.</li>
+          <li><b>Újrakezdés:</b> egy lezárt játék után kattints a gombra (<code>page.getByRole('button', { name: 'Reset' })</code>), és ellenőrizd, hogy mind a 9 mező üres.</li>
+          <li><b>Utolsó lépés kiemelése:</b> lépés után a mezőn legyen <code>lastcell</code> osztály: <code>await expect(squares.nth(0)).toHaveClass(/lastcell/);</code>, a következő lépés után pedig már ne legyen rajta.</li>
+          <li><b>Ismétlődő lépések:</b> ha sok tesztben kell lépni, írj egy segédfüggvényt, például <code>play(squares, [0, 3, 1, 4, 2])</code>, ami felváltva bal és jobb klikkel kattint a megadott mezőkre.</li>
+        </ul>
+        <p class="note"><b>Tipp:</b> a <code>npx playwright codegen http://localhost:5173</code> megnyit egy böngészőt, és a kattintásaidból tesztkódot generál. Jól jön, ha nem tudod, milyen lokátort használj.</p>
+      </article>
+    </section>
+
+  </main>
+
+  <footer>
+    Kész a tesztkészlet. Minden új funkcióhoz írj egy tesztet is!
+  </footer>
+</div>
+
+<script>
+(function () {
+  // tartalomjegyzék a fejezetekből
+  var toc = document.getElementById("toc");
+  var chapters = document.querySelectorAll(".chapter");
+  chapters.forEach(function (ch, i) {
+    var li = document.createElement("li");
+    var a = document.createElement("a");
+    a.href = "#" + ch.id;
+    a.innerHTML = '<span class="n">' + (i + 1) + '</span><span></span>';
+    a.lastChild.textContent = ch.dataset.title;
+    li.appendChild(a);
+    toc.appendChild(li);
+  });
+
+  // „kész” jelölők – csak kényelmi funkció, hiba esetén is működik az oldal
+  function load(id) { try { return localStorage.getItem("amoba-teszt-" + id) === "1"; } catch (e) { return false; } }
+  function save(id, v) { try { localStorage.setItem("amoba-teszt-" + id, v ? "1" : "0"); } catch (e) {} }
+  chapters.forEach(function (ch, i) {
+    var box = ch.querySelector(".done input");
+    var link = toc.children[i].firstChild;
+    box.checked = load(box.id);
+    link.classList.toggle("is-done", box.checked);
+    box.addEventListener("change", function () {
+      save(box.id, box.checked);
+      link.classList.toggle("is-done", box.checked);
+    });
+  });
+
+  // megoldás felfedése és másolása
+  document.querySelectorAll(".solution").forEach(function (sol) {
+    var btn = sol.querySelector(".reveal");
+    var copy = sol.querySelector(".copy");
+    var wrap = sol.querySelector(".code-wrap");
+    btn.addEventListener("click", function () {
+      var open = sol.classList.toggle("open");
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      btn.textContent = open ? "Elrejtés" : "Megoldás mutatása";
+      wrap.inert = !open;
+      wrap.setAttribute("aria-hidden", open ? "false" : "true");
+    });
+    copy.addEventListener("click", function () {
+      var text = Array.prototype.map.call(sol.querySelectorAll(".l"), function (l) { return l.textContent; }).join("\n");
+      var done = function () { copy.textContent = "Másolva"; setTimeout(function () { copy.textContent = "Másolás"; }, 1500); };
+      var fallback = function () {
+        var range = document.createRange();
+        range.selectNodeContents(sol.querySelector("pre"));
+        var s = window.getSelection(); s.removeAllRanges(); s.addRange(range);
+        copy.textContent = "Kijelölve – Ctrl+C";
+      };
+      try {
+        navigator.clipboard.writeText(text).then(done, fallback);
+      } catch (e) { fallback(); }
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
