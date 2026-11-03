@@ -129,7 +129,6 @@ export function Board() {
                 </div>
             ))}
             <button>Visza lépés</button>
-            <button onClick={handlePlayAgain}>újra inditás</button>
             <p>Aktuális játékos: {lastPlayer.current === PLAYER_X ? "O" : "X"}</p>
             {gameOver && winner && <div className="gameover">Game over! {winner} won</div>}
             {gameOver && !winner && <div className="gameover">Draw! No winner</div>}
