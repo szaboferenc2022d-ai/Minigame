@@ -36,7 +36,8 @@ export function Board() {
     const [gameOver, setGameOver] = useState(false);
     const [lastCell, setLastCell] = useState();
     const [score, setScore] = useState(readScore);
-    let lastPlayer = useRef();
+    const [history, setHistory] = useState([]);
+    const lastPlayer = useRef();
 
     useEffect(() => {
         try {
@@ -62,28 +63,51 @@ export function Board() {
         if (gameOver) return;
 
         // update the status
+        const previousState = {
+            status,
+            lastPlayer: lastPlayer.current,
+            lastCell,
+        };
         lastPlayer.current = player;
         const newStatus = status.map((value, index) => (index === idx ? player : value));
-        win_check(newStatus, player);
+        const result = win_check(newStatus, player, setWinner, setGameOver);
+        setHistory((previousHistory) => [...previousHistory, { ...previousState, result }]);
         setStatus(newStatus);
         setLastCell(idx);
-    }
 
-    function win_check(newStatus, player) {
-        const isWinner = checkWinner(newStatus, player);
-        if (isWinner) {
-            setWinner(player);
-            setGameOver(true);
+        if (result === PLAYER_X || result === PLAYER_O) {
+            const scoreKey = result === PLAYER_X ? "x" : "o";
             setScore((currentScore) => ({
                 ...currentScore,
-                [player === PLAYER_X ? "x" : "o"]: currentScore[player === PLAYER_X ? "x" : "o"] + 1,
+                [scoreKey]: currentScore[scoreKey] + 1,
             }));
-            return;
-        }
-
-        if (newStatus.every((cell) => cell)) {
-            setGameOver(true);
+        } else if (result === "draw") {
             setScore((currentScore) => ({ ...currentScore, draws: currentScore.draws + 1 }));
+        }
+    }
+
+    function handleUndo() {
+        const previousState = history[history.length - 1];
+        if (!previousState) return;
+
+        setStatus(previousState.status);
+        lastPlayer.current = previousState.lastPlayer;
+        setLastCell(previousState.lastCell);
+        setWinner(undefined);
+        setGameOver(false);
+        setHistory((previousHistory) => previousHistory.slice(0, -1));
+
+        if (previousState.result === PLAYER_X || previousState.result === PLAYER_O) {
+            const scoreKey = previousState.result === PLAYER_X ? "x" : "o";
+            setScore((currentScore) => ({
+                ...currentScore,
+                [scoreKey]: Math.max(0, currentScore[scoreKey] - 1),
+            }));
+        } else if (previousState.result === "draw") {
+            setScore((currentScore) => ({
+                ...currentScore,
+                draws: Math.max(0, currentScore.draws - 1),
+            }));
         }
     }
 
@@ -92,6 +116,7 @@ export function Board() {
         setWinner(undefined);
         setGameOver(false);
         setLastCell(undefined);
+        setHistory([]);
         lastPlayer.current = undefined;
     }
 
@@ -100,11 +125,12 @@ export function Board() {
             <div className="eredmeny">Player X Win {score.x} | Player O Win {score.o} | Draw {score.draws}</div>
             <button onClick={() => setScore({ x: 0, o: 0, draws: 0 })}>eredmény törlése</button>
             {BOARD_INDICES.map((rowIndex) => (
-                <div className="board-row">
+                <div className="board-row" key={rowIndex}>
                     {BOARD_INDICES.map((columnIndex) => {
                         const index = rowIndex * BOARD_SIDES + columnIndex;
                         return (
                             <Square
+                            key={index}
                             value={status[index]}
                                 highlight={index === lastCell}
                                 onSquareClick={(player) => handleClick(index, player)}
@@ -113,7 +139,7 @@ export function Board() {
                     })}
                 </div>
             ))}
-            <button>Visza lépés</button>
+            <button onClick={handleUndo} disabled={history.length === 0}>Vissza lépés</button>
             <p>Aktuális játékos: {lastPlayer.current === PLAYER_X ? "O" : "X"}</p>
             {gameOver && winner && <div>Game over! {winner} won</div>}
             {gameOver && !winner && <div className="gameover">Draw! No winner</div>}
